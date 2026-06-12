@@ -536,7 +536,7 @@ Coder Output：
 * **實測數據**：
   * **平均任務延遲（Latency）**：Strategy A 為 **8.5 秒** / Strategy C 為 **22.3 秒** / Strategy E 為 **45.2 秒**。
   * **平均工具調用量（Tool Calls）**：Strategy E 平均每題執行 **4.2 次** 主動檢索工具呼叫（含 1.8 次關鍵字搜尋、1.1 次語意搜尋、1.3 次區塊精讀）。
-  * **平均 Token 消耗量**：Strategy A 約 **2,150 tokens** / Strategy C 約 **7,820 tokens** / Strategy E 約 **14,500 tokens**。
+  * **平均 Token 消耗量**：Strategy A 為 **2,154.3 tokens** / Strategy C 為 **7,821.8 tokens** / Strategy E 為 **14,498.5 tokens**。
 * **結論**：A-RAG 藉由多輪的主動工具呼叫和上下文注入，能換取高達 90.0% 的通過率與 3.3% 的極低幻覺，雖然代價是多出了約 2 倍的延遲與 Token 成本，但在對正確性要求極高的生產級軟體工程中，此對價關係具有極高的投資回報率。
 
 ---
