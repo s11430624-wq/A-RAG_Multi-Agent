@@ -1,0 +1,14 @@
+--- a/student_system/src/grade.py
++++ b/student_system/src/grade.py
+@@ -11,2 +11,11 @@
+ def get_grades_by_course(course_id: str) -> list[dict]:
+     return [g.copy() for g in _GRADES if g["course_id"] == course_id]
++
++def calculate_pass_rate(course_id: str) -> float:
++    from student_system.src import course
++    course.get_course_by_id(course_id)
++    grades = get_grades_by_course(course_id)
++    if not grades:
++        return 0.0
++    pass_count = sum(1 for g in grades if g["score"] >= 60)
++    return round(pass_count / len(grades), 4)

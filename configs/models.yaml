@@ -1,0 +1,17 @@
+# A-RAG Multi-Agent 模型與 API Provider 配置
+# 注意：此設定檔僅保存模型參數與 Provider 名稱，嚴禁包含 API Key、Credentials 或 Token
+
+# 預設模型設定
+default_model: "google/gemini-3.5-flash"
+default_provider: "hermes_vertex_gateway"
+
+# 支援的 Providers 配置規格
+providers:
+  hermes_vertex_gateway:
+    name: "Hermes Vertex Gateway"
+    api_base: "http://127.0.0.1:8787/v1"
+    models:
+      - id: "google/gemini-3.5-flash"
+        temperature: 0.0               # 程式碼生成使用 0.0 以降低隨機性
+        max_output_tokens: 4096
+        top_p: 0.95

@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/contracts/task.schema.json",
+  "title": "CodingTask",
+  "type": "object",
+  "required": [
+    "task_id",
+    "title",
+    "task_type",
+    "difficulty",
+    "tags",
+    "task_description",
+    "starter_files",
+    "files_to_modify",
+    "allowed_corpus",
+    "required_evidence",
+    "public_test_paths",
+    "hidden_test_id",
+    "expected_behavior",
+    "forbidden_behaviors",
+    "grading",
+    "limits",
+    "public_feedback_policy"
+  ],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "pattern": "^T[0-9]{2}$",
+      "description": "Unique task identifier, e.g., T01, T02"
+    },
+    "title": {
+      "type": "string",
+      "description": "Task title"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": ["code_generation", "bug_fix", "refactoring", "api_usage"],
+      "description": "The category of the task"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["easy", "medium", "hard"],
+      "description": "The subjective difficulty rating"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "description": "Relevant tags for categorization"
+    },
+    "task_description": {
+      "type": "string",
+      "description": "Full description of the requirement"
+    },
+    "starter_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of files that are initialized for the task"
+    },
+    "files_to_modify": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of files that the model is allowed or required to modify"
+    },
+    "allowed_corpus": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Files that the RAG component is permitted to retrieve from"
+    },
+    "required_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The ground-truth document or source file containing necessary details to complete the task"
+    },
+    "public_test_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "File paths to public unit tests used for feedback"
+    },
+    "hidden_test_id": {
+      "type": "string",
+      "description": "Identifier of the hidden test suite"
+    },
+    "expected_behavior": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      },
+      "description": "A textual description of the expected output/behavior of the code"
+    },
+    "forbidden_behaviors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "A list of behaviors or APIs forbidden during task execution (e.g. hardcoding responses)"
+    },
+    "grading": {
+      "type": "object",
+      "required": [
+        "required_api_symbols",
+        "forbidden_api_symbols",
+        "requirement_checks"
+      ],
+      "properties": {
+        "required_api_symbols": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          },
+          "description": "List of API symbols that must be used"
+        },
+        "forbidden_api_symbols": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          },
+          "description": "List of API symbols that are forbidden"
+        },
+        "requirement_checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "Specific requirement checklist items"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Grading weights and specifications"
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "max_repair_rounds",
+        "public_test_timeout_seconds",
+        "hidden_test_timeout_seconds"
+      ],
+      "properties": {
+        "max_repair_rounds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "public_test_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "hidden_test_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "Resource and iteration constraints"
+    },
+    "public_feedback_policy": {
+      "type": "object",
+      "required": [
+        "include_stdout",
+        "include_stderr",
+        "include_traceback",
+        "max_chars"
+      ],
+      "properties": {
+        "include_stdout": {
+          "type": "boolean"
+        },
+        "include_stderr": {
+          "type": "boolean"
+        },
+        "include_traceback": {
+          "type": "boolean"
+        },
+        "max_chars": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "Determines how much details from public tests are shared back to the repair agent"
+    }
+  },
+  "additionalProperties": false
+}

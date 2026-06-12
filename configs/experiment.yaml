@@ -1,0 +1,34 @@
+# A-RAG Multi-Agent 實驗控制參數設定
+# 注意：此設定檔僅保存不含敏感資訊的實驗與環境參數
+
+# 實驗比對組別
+# A: Single LLM (Baseline)
+# C: Multi-Agent (Planner-Coder-Reviewer) without Retrieval
+# E: Multi-Agent + A-RAG (Planner-Coder-Reviewer with Allowed Corpus Retrieval)
+strategies:
+  - "A"
+  - "C"
+  - "E"
+
+# 實驗重複次數
+repetitions: 3
+
+# 每題在測試失敗後的程式碼自我修復上限輪數
+max_repair_rounds: 2
+
+# 隨機數種子，確保實驗可重現性
+seed: 42
+
+# 各階段超時時間設定（秒）
+timeout:
+  agent_response: 120      # 單一 Agent 單次推論時間上限
+  unit_test: 30             # 測試執行時間上限
+  total_run: 600            # 單次完整實驗執行時間上限
+
+# 結果輸出與儲存路徑
+paths:
+  tasks_definition: "experiments/tasks.json"
+  raw_results_dir: "results/raw"
+  derived_results_dir: "results/derived"
+  reviews_dir: "results/reviews"
+  workspace_base_dir: "workspaces"

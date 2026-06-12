@@ -1,0 +1,5 @@
+def is_valid_score(score: object) -> bool:
+    # Deliberate starter bugs (Issue #2 in ISSUES.md)
+    if score > 0 and score < 100:
+        return True
+    return False

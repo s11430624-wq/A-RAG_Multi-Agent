@@ -1,0 +1,31 @@
+--- a/student_system/src/utils.py
++++ b/student_system/src/utils.py
+@@ -3,3 +3,9 @@
+     if score > 0 and score < 100:
+         return True
+     return False
++
++def validate_score(score: object) -> None:
++    if isinstance(score, bool) or not isinstance(score, (int, float)):
++        raise ValueError("Invalid score")
++    if score < 0 or score > 100:
++        raise ValueError("Invalid score")
+--- a/student_system/src/student.py
++++ b/student_system/src/student.py
+@@ -14,5 +14,4 @@
+ def update_student_score(student_id: str, score: int | float) -> None:
+-    # Hardcoded check to be removed in T05 refactoring
+-    if score < 0 or score > 100:
+-        raise ValueError("Invalid Score")
++    from student_system.src.utils import validate_score
++    validate_score(score)
+     get_student_by_id(student_id)
+--- a/student_system/src/grade.py
++++ b/student_system/src/grade.py
+@@ -26,4 +26,3 @@
+ def add_grade(student_id: str, course_id: str, score: int | float) -> None:
+-    # Hardcoded check to be removed in T05 refactoring
+-    if score < 0 or score > 100:
+-        raise ValueError("Invalid Score")
++    from student_system.src.utils import validate_score
++    validate_score(score)
