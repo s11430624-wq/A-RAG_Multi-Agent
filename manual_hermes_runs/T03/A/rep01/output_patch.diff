@@ -1,0 +1,14 @@
+--- a/student_system/src/grade.py
++++ b/student_system/src/grade.py
+@@ -14,6 +14,8 @@ def get_grades_by_course(course_id: str) -> list[dict]:
+ def score_to_gpa(score: int | float) -> float:
+-    # Deliberate starter bugs (Issue #1 in ISSUES.md)
+-    if score >= 90:
+-        return 4.0
++    if not isinstance(score, (int, float)) or score < 0 or score > 100:
++        raise ValueError("Score must be between 0 and 100")
++
++    if score >= 90:
++        return 4
+     if score >= 80:
+         return 3.0

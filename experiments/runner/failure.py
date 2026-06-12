@@ -6,6 +6,8 @@ from experiments.evaluation.metrics import EmptyResponseError, RunnerError, Test
 from experiments.providers.models import (
     ProviderAuthenticationError,
     ProviderEmptyResponseError,
+    ProviderFinishReasonError,
+    ProviderMalformedResponseError,
     ProviderTimeoutError,
     ProviderTransportError,
     ProviderUsageUnavailableError,
@@ -15,14 +17,16 @@ from experiments.runner.scheduler import PlannedRun
 from experiments.runtime.patching import InvalidPatchError as RuntimeInvalidPatchError
 from experiments.runtime.patching import PatchApplyError
 from experiments.runtime.workspace import CleanupError
+from experiments.strategies.artifacts import ArtifactWriteError
 from experiments.strategies.models import StrategyResultProjection
-from experiments.strategies.parsers import InvalidPatchError as StrategyInvalidPatchError
+from experiments.strategies.parsers import (
+    InvalidPatchError as StrategyInvalidPatchError,
+    RetrievalBudgetExceededError,
+    StrategyResponseError,
+)
 
 
 def classify_runner_exception(exc: BaseException) -> RunnerFailure:
-    from experiments.live.budget import BudgetExceededError
-    if isinstance(exc, BudgetExceededError):
-        return _failure("budget_exceeded", "infra_error", True, False, str(exc))
     if isinstance(exc, ProviderTimeoutError):
         return _failure("model_timeout", "infra_error", True, False, str(exc))
     if isinstance(exc, (ProviderTransportError, ProviderAuthenticationError)):
@@ -35,11 +39,19 @@ def classify_runner_exception(exc: BaseException) -> RunnerFailure:
         return _failure("patch_apply_error", "repair_limit", False, True, str(exc))
     if isinstance(exc, TestTimeoutError):
         return _failure("test_timeout", "infra_error", True, False, str(exc))
-    if isinstance(exc, (RunnerError, CleanupError)):
+    if isinstance(exc, (RunnerError, CleanupError, TotalRunTimeoutError)):
         return _failure("runner_error", "infra_error", True, False, str(exc))
-    if isinstance(exc, TotalRunTimeoutError):
-        return _failure("runner_error", "infra_error", True, False, str(exc))
-    if isinstance(exc, ProviderUsageUnavailableError):
+    if isinstance(
+        exc,
+        (
+            RetrievalBudgetExceededError,
+            StrategyResponseError,
+            ProviderMalformedResponseError,
+            ProviderFinishReasonError,
+        ),
+    ):
+        return _failure("unknown", "repair_limit", False, True, str(exc))
+    if isinstance(exc, (ProviderUsageUnavailableError, ArtifactWriteError)):
         return _failure("unknown", "infra_error", True, False, str(exc))
     return _failure("unknown", "infra_error", True, False, str(exc))
 

@@ -1,10 +1,22 @@
 import pytest
-from student_system.src import grade
 
-def test_score_to_gpa_normal():
-    assert grade.score_to_gpa(90) == 4.0
-    assert grade.score_to_gpa(55) == 0.0
 
-def test_score_to_gpa_defect_85():
-    gpa = grade.score_to_gpa(85)
-    assert gpa == 3.5, f"85 mapped to {gpa} (expected 3.5)"
+def test_get_honor_roll_students_exists():
+    from student_system.src import student
+
+    assert hasattr(student, "get_honor_roll_students"), "get_honor_roll_students does not exist"
+
+
+def test_get_honor_roll_students_default_threshold():
+    from student_system.src import student
+
+    result = student.get_honor_roll_students()
+    assert result == [
+        {
+            "student_id": "S001",
+            "name": "Alice",
+            "average_gpa": 3.75,
+            "total_courses": 2,
+        }
+    ]
+

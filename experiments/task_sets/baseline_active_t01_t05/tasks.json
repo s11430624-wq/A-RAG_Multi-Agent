@@ -1,0 +1,288 @@
+[
+  {
+    "task_id": "T01",
+    "title": "Calculate Pass Rate",
+    "task_type": "code_generation",
+    "difficulty": "easy",
+    "tags": ["statistics", "grades"],
+    "task_description": "Create a function calculate_pass_rate(course_id: str) -> float in grade.py that calculates the ratio of passed students (score >= 60). Returns round(pass_count / total, 4) for normal courses, 0.0 for courses that exist but have no enrolled students, and raises ValueError for non-existent courses.",
+    "starter_files": [
+      "student_system/src/grade.py",
+      "student_system/src/course.py"
+    ],
+    "files_to_modify": [
+      "student_system/src/grade.py"
+    ],
+    "allowed_corpus": [
+      "student_system/API_SPEC.md",
+      "student_system/STYLE_GUIDE.md"
+    ],
+    "required_evidence": [
+      "student_system/API_SPEC.md"
+    ],
+    "public_test_paths": [
+      "student_system/tests/public/test_t01.py"
+    ],
+    "hidden_test_id": "T01",
+    "expected_behavior": [
+      "Returns pass count ratio rounded to 4 decimal places.",
+      "Returns 0.0 if course exists but has no grades.",
+      "Raises ValueError if course does not exist."
+    ],
+    "forbidden_behaviors": [
+      "Do not hardcode return values."
+    ],
+    "grading": {
+      "required_api_symbols": [
+        "get_grades_by_course",
+        "course.get_course_by_id"
+      ],
+      "forbidden_api_symbols": [],
+      "requirement_checks": [
+        "Returns round(pass_rate, 4)",
+        "Returns 0.0 for empty courses",
+        "Raises ValueError for non-existent courses"
+      ]
+    },
+    "limits": {
+      "max_repair_rounds": 2,
+      "public_test_timeout_seconds": 30,
+      "hidden_test_timeout_seconds": 30
+    },
+    "public_feedback_policy": {
+      "include_stdout": true,
+      "include_stderr": true,
+      "include_traceback": false,
+      "max_chars": 2048
+    }
+  },
+  {
+    "task_id": "T02",
+    "title": "Student Course Summary Query",
+    "task_type": "api_usage",
+    "difficulty": "medium",
+    "tags": ["query", "integration"],
+    "task_description": "Create a function get_student_course_summary(student_id: str) -> dict in student.py that integrates grade and course information. It must query the standard grade.get_grades_by_student and course.get_course_by_id, returning a structure of courses showing credit and titles. Raises ValueError if student does not exist. Directly accessing raw database dictionaries is strictly forbidden.",
+    "starter_files": [
+      "student_system/src/student.py",
+      "student_system/src/grade.py",
+      "student_system/src/course.py"
+    ],
+    "files_to_modify": [
+      "student_system/src/student.py"
+    ],
+    "allowed_corpus": [
+      "student_system/API_SPEC.md",
+      "student_system/src/course.py",
+      "student_system/src/grade.py"
+    ],
+    "required_evidence": [
+      "student_system/API_SPEC.md"
+    ],
+    "public_test_paths": [
+      "student_system/tests/public/test_t02.py"
+    ],
+    "hidden_test_id": "T02",
+    "expected_behavior": [
+      "Returns student id and associated courses list with titles and credits.",
+      "Raises ValueError for non-existent students.",
+      "Integrates grade and course modules properly."
+    ],
+    "forbidden_behaviors": [
+      "Do not access raw grades databases directly."
+    ],
+    "grading": {
+      "required_api_symbols": [
+        "grade.get_grades_by_student",
+        "course.get_course_by_id",
+        "get_student_by_id"
+      ],
+      "forbidden_api_symbols": [
+        "raw_grades",
+        "grades_db"
+      ],
+      "requirement_checks": [
+        "Retrieves list of student grade dicts",
+        "Retrieves metadata for each course",
+        "Raises ValueError for non-existent students"
+      ]
+    },
+    "limits": {
+      "max_repair_rounds": 2,
+      "public_test_timeout_seconds": 30,
+      "hidden_test_timeout_seconds": 30
+    },
+    "public_feedback_policy": {
+      "include_stdout": true,
+      "include_stderr": true,
+      "include_traceback": false,
+      "max_chars": 2048
+    }
+  },
+  {
+    "task_id": "T03",
+    "title": "Fix score_to_gpa mapping",
+    "task_type": "bug_fix",
+    "difficulty": "easy",
+    "tags": ["mapping", "bounds"],
+    "task_description": "Fix the logic in score_to_gpa(score) inside grade.py. Correct the mapping so that 85-89 maps to GPA 3.5 (currently missing) and 70-74 maps to GPA 2.0 (currently 1.5). Add ValueError validation for scores outside the [0, 100] interval.",
+    "starter_files": [
+      "student_system/src/grade.py"
+    ],
+    "files_to_modify": [
+      "student_system/src/grade.py"
+    ],
+    "allowed_corpus": [
+      "student_system/API_SPEC.md",
+      "student_system/STYLE_GUIDE.md",
+      "student_system/ISSUES.md"
+    ],
+    "required_evidence": [
+      "student_system/ISSUES.md"
+    ],
+    "public_test_paths": [
+      "student_system/tests/public/test_t03.py"
+    ],
+    "hidden_test_id": "T03",
+    "expected_behavior": [
+      "Correctly converts 85 to GPA 3.5.",
+      "Correctly converts 72 to GPA 2.0.",
+      "Raises ValueError for out of bounds scores or invalid types."
+    ],
+    "forbidden_behaviors": [],
+    "grading": {
+      "required_api_symbols": [
+        "score_to_gpa"
+      ],
+      "forbidden_api_symbols": [],
+      "requirement_checks": [
+        "Correctly maps score 85-89 to GPA 3.5",
+        "Correctly maps score 70-74 to GPA 2.0",
+        "Raises ValueError for scores outside [0, 100]"
+      ]
+    },
+    "limits": {
+      "max_repair_rounds": 2,
+      "public_test_timeout_seconds": 30,
+      "hidden_test_timeout_seconds": 30
+    },
+    "public_feedback_policy": {
+      "include_stdout": true,
+      "include_stderr": true,
+      "include_traceback": false,
+      "max_chars": 2048
+    }
+  },
+  {
+    "task_id": "T04",
+    "title": "Correct is_valid_score boundaries",
+    "task_type": "bug_fix",
+    "difficulty": "easy",
+    "tags": ["type-check", "boundaries"],
+    "task_description": "Fix the boundaries and type handling in is_valid_score(score) inside utils.py. The boundaries 0 and 100 must return True, and any non-numeric types or booleans (True/False) must return False instead of raising exceptions.",
+    "starter_files": [
+      "student_system/src/utils.py"
+    ],
+    "files_to_modify": [
+      "student_system/src/utils.py"
+    ],
+    "allowed_corpus": [
+      "student_system/API_SPEC.md",
+      "student_system/STYLE_GUIDE.md",
+      "student_system/ISSUES.md"
+    ],
+    "required_evidence": [
+      "student_system/ISSUES.md"
+    ],
+    "public_test_paths": [
+      "student_system/tests/public/test_t04.py"
+    ],
+    "hidden_test_id": "T04",
+    "expected_behavior": [
+      "0 and 100 are validated as True.",
+      "String inputs, list inputs, None, or boolean inputs return False."
+    ],
+    "forbidden_behaviors": [],
+    "grading": {
+      "required_api_symbols": [
+        "is_valid_score"
+      ],
+      "forbidden_api_symbols": [],
+      "requirement_checks": [
+        "Returns True for 0 and 100",
+        "Returns False for strings, arrays or None without crashing",
+        "Returns False for boolean values True/False"
+      ]
+    },
+    "limits": {
+      "max_repair_rounds": 2,
+      "public_test_timeout_seconds": 30,
+      "hidden_test_timeout_seconds": 30
+    },
+    "public_feedback_policy": {
+      "include_stdout": true,
+      "include_stderr": true,
+      "include_traceback": false,
+      "max_chars": 2048
+    }
+  },
+  {
+    "task_id": "T05",
+    "title": "Extract score validation to utils",
+    "task_type": "refactoring",
+    "difficulty": "medium",
+    "tags": ["dry", "refactor"],
+    "task_description": "Refactor the duplicate score validation checks in student.py and grade.py. Define a new self-contained validation function validate_score(score: object) -> None in utils.py that raises ValueError for invalid scores or types. Replace duplicate comparisons with validate_score call. validate_score must NOT call is_valid_score.",
+    "starter_files": [
+      "student_system/src/utils.py",
+      "student_system/src/student.py",
+      "student_system/src/grade.py"
+    ],
+    "files_to_modify": [
+      "student_system/src/utils.py",
+      "student_system/src/student.py",
+      "student_system/src/grade.py"
+    ],
+    "allowed_corpus": [
+      "student_system/STYLE_GUIDE.md",
+      "student_system/src/utils.py",
+      "student_system/src/student.py",
+      "student_system/src/grade.py"
+    ],
+    "required_evidence": [
+      "student_system/STYLE_GUIDE.md"
+    ],
+    "public_test_paths": [
+      "student_system/tests/public/test_t05.py"
+    ],
+    "hidden_test_id": "T05",
+    "expected_behavior": [
+      "Defines a self-contained validate_score function.",
+      "Import and integrate validate_score in student and grade modules.",
+      "Eradicate duplicate boundary checks to comply with DRY."
+    ],
+    "forbidden_behaviors": [],
+    "grading": {
+      "required_api_symbols": [
+        "validate_score"
+      ],
+      "forbidden_api_symbols": [],
+      "requirement_checks": [
+        "Extracts utils.validate_score to enforce DRY",
+        "Integrates validation across student and grade modules",
+        "Eliminates duplicate boundary comparisons"
+      ]
+    },
+    "limits": {
+      "max_repair_rounds": 2,
+      "public_test_timeout_seconds": 30,
+      "hidden_test_timeout_seconds": 30
+    },
+    "public_feedback_policy": {
+      "include_stdout": true,
+      "include_stderr": true,
+      "include_traceback": false,
+      "max_chars": 2048
+    }
+  }
+]

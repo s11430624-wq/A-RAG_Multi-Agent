@@ -13,10 +13,12 @@ from experiments.live.smoke_executor import (
     LiveExecutionRequest,
     LiveExperimentExecutor,
     LiveExecutionAbort,
+    _CompletedOnlyWriter,
 )
 from experiments.live.budget import BudgetLimits, BudgetExceededError
 from experiments.runner.scheduler import build_scheduler_plan
 from experiments.runner.config import load_experiment_config, ExperimentPaths
+from experiments.runner.result_writer import ResultJsonlWriter
 from experiments.providers.models import ProviderAttemptRecord, ModelResponse, Usage
 from dataclasses import replace
 
@@ -234,6 +236,202 @@ def test_full_run_dry_activation_pipeline(tmp_path, monkeypatch, isolate_cli_sle
 
     # Verify spy: offline dry activation does not call real time.sleep but records the calls
     assert isolate_cli_sleeper.calls == [10.0] * 44
+
+
+def test_pilot15_fake_activation_runs_canonical_first_15(
+    tmp_path,
+    monkeypatch,
+    isolate_cli_sleeper,
+):
+    def block_socket(*args, **kwargs):
+        raise AssertionError("Network socket connection attempted!")
+
+    monkeypatch.setattr(socket, "socket", block_socket)
+    repo, report_sha = _copy_real_frozen_files(tmp_path / "repo")
+    args = _valid_cli_args(repo, report_sha) + ["--pilot-run-count", "15"]
+
+    monkeypatch.setenv("ARAG_RUN_LIVE_GATEWAY", "1")
+    monkeypatch.setenv("ARAG_EXECUTE_FULL_RUN_ONCE", "1")
+    monkeypatch.setenv("ARAG_USE_FAKE_FULL_RUN_PROVIDER", "1")
+
+    assert main(args) == 0
+
+    full_id = "m7e_full_20260611T180000Z"
+    jsonl_path = repo / "results" / "raw" / f"{full_id}.jsonl"
+    records = [
+        json.loads(line)
+        for line in jsonl_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert [
+        (record["task_id"], record["strategy"], record["repetition"])
+        for record in records
+    ] == [
+        ("T01", strategy, repetition)
+        for strategy in ("A", "C", "E")
+        for repetition in (1, 2, 3)
+    ] + [
+        ("T02", strategy, repetition)
+        for strategy in ("A", "C")
+        for repetition in (1, 2, 3)
+    ]
+    assert isolate_cli_sleeper.calls == [10.0] * 14
+
+
+@pytest.mark.parametrize("pilot_count", ["1", "14", "16", "45"])
+def test_pilot_run_count_rejects_any_value_other_than_15(
+    tmp_path,
+    monkeypatch,
+    capsys,
+    pilot_count,
+):
+    repo, report_sha = _copy_real_frozen_files(tmp_path / "repo")
+    args = _valid_cli_args(repo, report_sha) + ["--pilot-run-count", pilot_count]
+    monkeypatch.setenv("ARAG_RUN_LIVE_GATEWAY", "1")
+    monkeypatch.setenv("ARAG_EXECUTE_FULL_RUN_ONCE", "1")
+    monkeypatch.setenv("ARAG_USE_FAKE_FULL_RUN_PROVIDER", "1")
+
+    assert main(args) == 2
+    assert "--pilot-run-count must be exactly 15" in capsys.readouterr().out
+
+
+def test_pilot15_rejects_real_provider_execution(tmp_path, monkeypatch, capsys):
+    repo, report_sha = _copy_real_frozen_files(tmp_path / "repo")
+    args = _valid_cli_args(repo, report_sha) + ["--pilot-run-count", "15"]
+    monkeypatch.setenv("ARAG_RUN_LIVE_GATEWAY", "1")
+    monkeypatch.setenv("ARAG_EXECUTE_FULL_RUN_ONCE", "1")
+    monkeypatch.delenv("ARAG_USE_FAKE_FULL_RUN_PROVIDER", raising=False)
+
+    assert main(args) == 2
+    assert "15-run pilot live execution is blocked" in capsys.readouterr().out
+
+
+def test_pilot15_real_provider_requires_dedicated_one_shot_approval(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    repo, report_sha = _copy_real_frozen_files(tmp_path / "repo")
+    args = _valid_cli_args(repo, report_sha) + ["--pilot-run-count", "15"]
+    monkeypatch.setenv("ARAG_RUN_LIVE_GATEWAY", "1")
+    monkeypatch.setenv("ARAG_EXECUTE_FULL_RUN_ONCE", "1")
+    monkeypatch.delenv("ARAG_EXECUTE_PILOT15_ONCE", raising=False)
+    monkeypatch.delenv("ARAG_USE_FAKE_FULL_RUN_PROVIDER", raising=False)
+
+    assert main(args) == 2
+    assert "ARAG_EXECUTE_PILOT15_ONCE=1" in capsys.readouterr().out
+
+
+def test_pilot15_real_provider_approval_builds_exact_15_without_execution(
+    tmp_path,
+    monkeypatch,
+):
+    repo, report_sha = _copy_real_frozen_files(tmp_path / "repo")
+    args = _valid_cli_args(repo, report_sha) + ["--pilot-run-count", "15"]
+    monkeypatch.setenv("ARAG_RUN_LIVE_GATEWAY", "1")
+    monkeypatch.delenv("ARAG_EXECUTE_FULL_RUN_ONCE", raising=False)
+    monkeypatch.setenv("ARAG_EXECUTE_PILOT15_ONCE", "1")
+    monkeypatch.delenv("ARAG_USE_FAKE_FULL_RUN_PROVIDER", raising=False)
+
+    captured = {}
+
+    def fake_execute(self, request):
+        captured["request"] = request
+        from experiments.live.smoke_executor import LiveExecutionResult
+
+        return LiveExecutionResult(
+            completed_run_ids=tuple(run.identity.run_id for run in request.planned_runs),
+            attempted_run_count=15,
+            written_record_count=15,
+            model_call_count=0,
+            provider_attempt_count=0,
+            total_input_tokens=0,
+            total_output_tokens=0,
+            quarantined=False,
+            abort_reason=None,
+            raw_jsonl_path=request.raw_jsonl_path,
+            artifact_root=request.artifact_root,
+            retrieval_log_root=request.retrieval_log_root,
+        )
+
+    monkeypatch.setattr(LiveExperimentExecutor, "execute", fake_execute)
+
+    assert main(args) == 0
+    request = captured["request"]
+    assert request.mode == "pilot15"
+    assert len(request.planned_runs) == 15
+    assert [
+        (run.identity.task_id, run.identity.strategy, run.identity.repetition)
+        for run in request.planned_runs
+    ] == [
+        ("T01", strategy, repetition)
+        for strategy in ("A", "C", "E")
+        for repetition in (1, 2, 3)
+    ] + [
+        ("T02", strategy, repetition)
+        for strategy in ("A", "C")
+        for repetition in (1, 2, 3)
+    ]
+
+
+def test_completed_only_writer_rejects_unknown_terminal_failure_record(tmp_path):
+    schema_path = Path(__file__).resolve().parents[2] / "contracts" / "result.schema.json"
+    raw_root = tmp_path / "raw"
+    jsonl_path = raw_root / "out.jsonl"
+    writer = _CompletedOnlyWriter(
+        ResultJsonlWriter(
+            approved_raw_root=raw_root,
+            jsonl_path=jsonl_path,
+            schema_path=schema_path,
+        )
+    )
+    active_exc = RuntimeError("synthetic terminal failure")
+    writer.set_active_exception(active_exc)
+
+    record = {
+        "run_id": "m7e_full_20260611T180000Z__T01__E__rep01__seed42",
+        "task_id": "T01",
+        "strategy": "E",
+        "repetition": 1,
+        "model": "google/gemini-3.5-flash",
+        "seed": 42,
+        "tool_calls": 0,
+        "retrieved_tokens": 0,
+        "retrieval_success": None,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost": None,
+        "model_latency_seconds": 0.0,
+        "infra_error": False,
+        "error_type": "unknown",
+        "stop_reason": "repair_limit",
+        "artifact_path": None,
+        "valid_run": True,
+        "pass1_public": False,
+        "pass1_hidden": False,
+        "pass1_public_tests_passed": 0,
+        "pass1_hidden_tests_passed": 0,
+        "final_public": False,
+        "final_hidden": False,
+        "public_tests_passed": 0,
+        "public_tests_total": 0,
+        "hidden_tests_passed": 0,
+        "hidden_tests_total": 0,
+        "repair_rounds": 0,
+        "patch_apply_failures": 0,
+        "test_latency_seconds": 0.0,
+        "latency_seconds": 0.0,
+        "api_correct": None,
+        "hallucinated_api": None,
+        "requirement_score": None,
+        "quality_score": None,
+        "manual_review_status": "pending",
+    }
+
+    with pytest.raises(LiveExecutionAbort, match="synthetic terminal failure"):
+        writer.append(record)
+
+    assert not jsonl_path.exists()
 
 
 

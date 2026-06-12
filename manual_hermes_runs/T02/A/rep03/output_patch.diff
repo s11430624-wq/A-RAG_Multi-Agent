@@ -1,0 +1,29 @@
+--- a/student_system/src/student.py
++++ b/student_system/src/student.py
+@@ -15,4 +15,26 @@ def update_student_score(student_id: str, score: int | float) -> None:
+     # Hardcoded check to be removed in T05 refactoring
+     if score < 0 or score > 100:
+         raise ValueError("Invalid Score")
+     get_student_by_id(student_id)
++
++def get_student_course_summary(student_id: str) -> dict:
++    from student_system.src import grade, course
++
++    # Ensure student exists
++    student = get_student_by_id(student_id)
++
++    # Retrieve grades for the student
++    grades = grade.get_grades_by_student(student_id)
++
++    summary_courses = []
++    for g in grades:
++        c = course.get_course_by_id(g["course_id"])
++        summary_courses.append({
++            "title": c["title"],
++            "credits": c["credits"]
++        })
++
++    return {
++        "student_id": student_id,
++        "courses": summary_courses
++    }

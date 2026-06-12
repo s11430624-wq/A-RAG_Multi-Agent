@@ -149,7 +149,38 @@ class OpenAICompatibleProvider:
                     None,
                 )
             )
-            return self._parse_response(request, response, tuple(attempts), self._clock() - started)
+            try:
+                return self._parse_response(request, response, tuple(attempts), self._clock() - started)
+            except ProviderEmptyResponseError:
+                can_retry = attempt_index < self.config.max_attempts
+                if not can_retry:
+                    raise
+                backoff = self._retry_backoff(attempt_index)
+                attempts[-1] = ProviderAttemptRecord(
+                    request.call_index,
+                    attempt_index,
+                    self._clock() - attempt_started,
+                    backoff,
+                    "response_error",
+                    TransportErrorInfo("provider_response", True, response.status_code, "empty_response"),
+                )
+                self._sleep_with_cancellation(request, backoff, attempts, started)
+                continue
+            except ProviderMalformedResponseError as exc:
+                can_retry = attempt_index < self.config.max_attempts and str(exc) == "provider response is malformed"
+                if not can_retry:
+                    raise
+                backoff = self._retry_backoff(attempt_index)
+                attempts[-1] = ProviderAttemptRecord(
+                    request.call_index,
+                    attempt_index,
+                    self._clock() - attempt_started,
+                    backoff,
+                    "response_error",
+                    TransportErrorInfo("provider_response", True, response.status_code, "malformed_response"),
+                )
+                self._sleep_with_cancellation(request, backoff, attempts, started)
+                continue
 
         raise AssertionError("unreachable")
 
@@ -160,18 +191,21 @@ class OpenAICompatibleProvider:
         attempts: tuple[ProviderAttemptRecord, ...],
         elapsed: float,
     ) -> ModelResponse:
+        payload_text = response.body_bytes.decode("utf-8", errors="replace")
         try:
-            payload = json.loads(response.body_bytes.decode("utf-8"))
+            payload = json.loads(payload_text)
             choice = payload["choices"][0]
-            text = choice["message"]["content"]
+            text = _extract_choice_text(choice)
             finish_reason = choice.get("finish_reason", "unknown")
             model = payload.get("model", request.parameters.model)
         except Exception as exc:
-            raise ProviderMalformedResponseError(
+            malformed = ProviderMalformedResponseError(
                 "provider response is malformed",
                 attempt_records=attempts,
                 elapsed_seconds=elapsed,
-            ) from exc
+            )
+            malformed.raw_response = payload_text
+            raise malformed from exc
         if not isinstance(text, str) or not text.strip():
             raise ProviderEmptyResponseError(
                 "provider response content is empty",
@@ -271,13 +305,41 @@ class OpenAICompatibleProvider:
         self._check_cancelled(request, attempts, started, len(attempts) + 1)
         self._sleeper(seconds)
         self._check_cancelled(request, attempts, started, len(attempts) + 1)
-        elapsed = self._clock() - started
-        if elapsed > request.parameters.timeout_seconds:
-            raise ProviderTimeoutError(
-                "provider transport timed out after backoff sleep",
-                attempt_records=tuple(attempts),
-                elapsed_seconds=elapsed,
-            )
+
+
+def _extract_choice_text(choice: object) -> str:
+    if not isinstance(choice, dict):
+        raise TypeError("choice must be an object")
+
+    candidate = None
+    message = choice.get("message")
+    if isinstance(message, dict):
+        candidate = message.get("content")
+    if candidate is None and "content" in choice:
+        candidate = choice.get("content")
+    if candidate is None:
+        delta = choice.get("delta")
+        if isinstance(delta, dict):
+            candidate = delta.get("content")
+
+    if isinstance(candidate, str):
+        return candidate
+    if isinstance(candidate, list):
+        text_parts: list[str] = []
+        for item in candidate:
+            if isinstance(item, str):
+                text_parts.append(item)
+                continue
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "text" and isinstance(item.get("text"), str):
+                text_parts.append(item["text"])
+                continue
+            nested_text = item.get("text")
+            if isinstance(nested_text, dict) and isinstance(nested_text.get("value"), str):
+                text_parts.append(nested_text["value"])
+        return "".join(text_parts)
+    raise TypeError("choice content is missing")
 
 
 def _attempt(call_index: int, attempt_index: int, latency: float, backoff: float, category: str):

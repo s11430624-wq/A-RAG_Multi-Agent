@@ -7,6 +7,8 @@ from experiments.evaluation.metrics import EmptyResponseError, RunnerError, Test
 from experiments.providers.models import (
     ProviderAuthenticationError,
     ProviderEmptyResponseError,
+    ProviderFinishReasonError,
+    ProviderMalformedResponseError,
     ProviderTimeoutError,
     ProviderTransportError,
     ProviderUsageUnavailableError,
@@ -17,7 +19,11 @@ from experiments.runtime.patching import InvalidPatchError as RuntimeInvalidPatc
 from experiments.runtime.patching import PatchApplyError
 from experiments.strategies.artifacts import ArtifactWriteError
 from experiments.strategies.models import StrategyResultProjection
-from experiments.strategies.parsers import InvalidPatchError as StrategyInvalidPatchError
+from experiments.strategies.parsers import (
+    InvalidPatchError as StrategyInvalidPatchError,
+    RetrievalBudgetExceededError,
+    StrategyResponseError,
+)
 
 
 @pytest.mark.parametrize(
@@ -35,6 +41,10 @@ from experiments.strategies.parsers import InvalidPatchError as StrategyInvalidP
         (RunnerError("runner"), "runner_error", "infra_error", True, False),
         (ProviderUsageUnavailableError("missing"), "unknown", "infra_error", True, False),
         (ArtifactWriteError("artifact"), "unknown", "infra_error", True, False),
+        (RetrievalBudgetExceededError("budget"), "unknown", "repair_limit", False, True),
+        (StrategyResponseError("strategy"), "unknown", "repair_limit", False, True),
+        (ProviderMalformedResponseError("malformed"), "unknown", "repair_limit", False, True),
+        (ProviderFinishReasonError("reason"), "unknown", "repair_limit", False, True),
         (RuntimeError("surprise"), "unknown", "infra_error", True, False),
     ],
 )

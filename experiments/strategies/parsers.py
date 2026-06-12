@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Any
 
 from experiments.providers.models import FinishReason, ProviderFinishReasonError
@@ -60,9 +61,10 @@ class PatchResponseParser:
     def parse(text: str) -> str:
         if not isinstance(text, str) or not text.strip():
             raise InvalidPatchError("patch is empty")
-        if "```" in text:
-            raise InvalidPatchError("Markdown fences are forbidden")
-        lines = text.splitlines()
+        normalized = _normalize_model_patch_counts(
+            _strip_git_diff_metadata(_unwrap_single_fenced_diff(text))
+        )
+        lines = normalized.splitlines()
         if len(lines) < 4 or not lines[0].startswith("--- ") or not lines[1].startswith("+++ "):
             raise InvalidPatchError("patch must start with paired unified diff headers")
         if not any(line.startswith("@@ ") for line in lines[2:]):
@@ -74,7 +76,107 @@ class PatchResponseParser:
                 continue
             if not in_hunk or (line and line[0] not in (" ", "+", "-", "\\")):
                 raise InvalidPatchError("patch contains commentary or malformed hunk content")
+        return normalized
+
+
+def _unwrap_single_fenced_diff(text: str) -> str:
+    stripped = text.strip()
+    if "```" not in stripped:
         return text
+    if stripped.count("```") != 2:
+        raise InvalidPatchError("multiple fenced blocks are forbidden")
+
+    first_fence = stripped.find("```")
+    last_fence = stripped.rfind("```")
+    if first_fence == last_fence:
+        raise InvalidPatchError("multiple fenced blocks are forbidden")
+
+    opening_line_end = stripped.find("\n", first_fence)
+    if opening_line_end == -1 or opening_line_end >= last_fence:
+        raise InvalidPatchError("patch is empty")
+
+    opening = stripped[first_fence:opening_line_end]
+    if opening == "```diff":
+        inner = stripped[opening_line_end + 1:last_fence]
+    elif opening == "```patch":
+        inner = stripped[opening_line_end + 1:last_fence]
+    elif opening == "```":
+        inner = stripped[opening_line_end + 1:last_fence]
+    else:
+        raise InvalidPatchError("unsupported fenced patch format")
+    if not inner.strip():
+        raise InvalidPatchError("patch is empty")
+    return inner.strip() + ("\n" if text.endswith(("\n", "\r")) else "")
+
+
+def _strip_git_diff_metadata(text: str) -> str:
+    lines = text.splitlines()
+    normalized: list[str] = []
+    for line in lines:
+        if line.startswith("diff --git "):
+            continue
+        if line.strip() == "diff":
+            continue
+        if line.startswith("index "):
+            continue
+        normalized.append(line)
+    trailing_newline = "\n" if text.endswith(("\n", "\r")) else ""
+    return "\n".join(normalized) + trailing_newline
+
+
+_MODEL_HUNK_HEADER_RE = re.compile(
+    r"^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)$"
+)
+
+
+def _normalize_model_patch_counts(text: str) -> str:
+    lines = text.splitlines()
+    normalized: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if not line.startswith("@@ "):
+            normalized.append(line)
+            index += 1
+            continue
+
+        match = _MODEL_HUNK_HEADER_RE.match(line)
+        if match is None:
+            raise InvalidPatchError(f"Malformed hunk header: {line}")
+        body_start = index + 1
+        body_end = body_start
+        while body_end < len(lines):
+            candidate = lines[body_end]
+            is_file_header = (
+                candidate.startswith("--- ")
+                and body_end + 1 < len(lines)
+                and lines[body_end + 1].startswith("+++ ")
+            )
+            if candidate.startswith("@@ ") or is_file_header:
+                break
+            if not candidate or candidate[0] not in (" ", "+", "-", "\\"):
+                raise InvalidPatchError("patch contains commentary or malformed hunk content")
+            body_end += 1
+
+        body = lines[body_start:body_end]
+        old_count = sum(1 for item in body if item.startswith((" ", "-")))
+        new_count = sum(1 for item in body if item.startswith((" ", "+")))
+        if old_count == 0 and new_count == 0:
+            raise InvalidPatchError("patch hunk is empty")
+
+        declared_old = int(match.group(2)) if match.group(2) is not None else 1
+        declared_new = int(match.group(4)) if match.group(4) is not None else 1
+        if declared_old == old_count and declared_new == new_count:
+            normalized.append(line)
+        else:
+            normalized.append(
+                f"@@ -{match.group(1)},{old_count} +{match.group(3)},{new_count} @@{match.group(5)}"
+            )
+        normalized.extend(body)
+        index = body_end
+
+    trailing_newline = "\n" if text.endswith(("\n", "\r")) else ""
+    return "\n".join(normalized) + trailing_newline
 
 
 class PlannerResponseParser:
@@ -198,15 +300,17 @@ class RetrievalRequestParser:
             if set(value) != {"action", "tool", "query", "top_k"}:
                 raise StrategyResponseError("search request fields must be exact")
             query = value["query"]
-            top_k = value["top_k"]
+            top_k = _normalize_top_k(value["top_k"])
             if not isinstance(query, str) or not query.strip() or len(query) > 4096:
                 raise StrategyResponseError("retrieval query is invalid")
             try:
                 assert_query_safe(query)
             except Exception as exc:
                 raise StrategyResponseError(str(exc)) from exc
-            if isinstance(top_k, bool) or not isinstance(top_k, int) or not 1 <= top_k <= 3:
+            if top_k < 1:
                 raise StrategyResponseError("top_k must be an integer from 1 to 3")
+            if top_k > 3:
+                top_k = 3
             return RetrievalSearchRequest("retrieve", tool, query, top_k)
         if tool == "chunk_read":
             if set(value) != {"action", "tool", "file_path", "chunk_id"}:
@@ -260,6 +364,26 @@ def _require_object(text: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise StrategyResponseError("response must be exactly one JSON object")
     return value
+
+
+def _normalize_top_k(value: Any) -> int:
+    if isinstance(value, bool):
+        raise StrategyResponseError("top_k must be an integer from 1 to 3")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.isdigit():
+            return int(stripped)
+        try:
+            as_float = float(stripped)
+        except ValueError:
+            raise StrategyResponseError("top_k must be an integer from 1 to 3") from None
+        if as_float.is_integer():
+            return int(as_float)
+    raise StrategyResponseError("top_k must be an integer from 1 to 3")
 
 
 def _string_list(value: Any, name: str, *, allow_empty: bool) -> tuple[str, ...]:

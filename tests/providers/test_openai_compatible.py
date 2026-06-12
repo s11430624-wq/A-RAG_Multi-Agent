@@ -148,6 +148,122 @@ def test_invalid_usage_preserves_attempt_audit():
     assert exc_info.value.elapsed_seconds >= 0
 
 
+def test_malformed_response_retries_and_can_recover():
+    malformed = TransportResponse(
+        200,
+        json.dumps(
+            {
+                "id": "provider-id",
+                "model": "model",
+                "choices": [{"finish_reason": "length"}],
+            }
+        ).encode("utf-8"),
+        (),
+        "transport-id",
+    )
+    transport = ScriptedTransport(
+        [
+            malformed,
+            _response(usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}),
+        ]
+    )
+    sleeps = []
+    provider = OpenAICompatibleProvider(_config(), transport=transport, sleeper=sleeps.append)
+
+    response = provider.generate(_request(call_index=11))
+
+    assert response.text == "answer"
+    assert response.retry_count == 1
+    assert len(response.attempt_records) == 2
+    assert response.attempt_records[0].outcome == "response_error"
+    assert response.attempt_records[0].error.error_code == "malformed_response"
+    assert sleeps == [0.25]
+
+
+def test_provider_accepts_top_level_choice_content():
+    body = {
+        "id": "provider-id",
+        "model": "model",
+        "choices": [{"content": "answer", "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+    }
+    transport = ScriptedTransport(
+        [TransportResponse(200, json.dumps(body).encode("utf-8"), (), "transport-id")]
+    )
+    provider = OpenAICompatibleProvider(_config(), transport=transport)
+
+    response = provider.generate(_request())
+
+    assert response.text == "answer"
+
+
+def test_provider_accepts_text_part_content_lists():
+    body = {
+        "id": "provider-id",
+        "model": "model",
+        "choices": [
+            {
+                "message": {
+                    "content": [
+                        {"type": "text", "text": "hello"},
+                        {"type": "text", "text": " world"},
+                    ]
+                },
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3},
+    }
+    transport = ScriptedTransport(
+        [TransportResponse(200, json.dumps(body).encode("utf-8"), (), "transport-id")]
+    )
+    provider = OpenAICompatibleProvider(_config(), transport=transport)
+
+    response = provider.generate(_request())
+
+    assert response.text == "hello world"
+
+
+def test_429_backoff_sleep_does_not_trigger_per_request_timeout():
+    transport = ScriptedTransport(
+        [
+            _response(status=429),
+            _response(status=429),
+            _response(usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}),
+        ]
+    )
+    sleeps = []
+    provider = OpenAICompatibleProvider(
+        _config(),
+        transport=transport,
+        sleeper=sleeps.append,
+        retry_delay_resolver=lambda attempt, response, now: 30.0 if attempt == 1 else 60.0,
+    )
+
+    response = provider.generate(_request())
+
+    assert response.text == "answer"
+    assert response.retry_count == 2
+    assert sleeps == [30.0, 60.0]
+
+
+def test_malformed_response_preserves_raw_payload_for_diagnostics():
+    malformed_body = {"id": "provider-id", "model": "model", "choices": [{"finish_reason": "stop"}]}
+    transport = ScriptedTransport(
+        [
+            TransportResponse(200, json.dumps(malformed_body).encode("utf-8"), (), "transport-id"),
+            TransportResponse(200, json.dumps(malformed_body).encode("utf-8"), (), "transport-id"),
+            TransportResponse(200, json.dumps(malformed_body).encode("utf-8"), (), "transport-id"),
+        ]
+    )
+    provider = OpenAICompatibleProvider(_config(), transport=transport, sleeper=lambda _: None)
+
+    with pytest.raises(ProviderMalformedResponseError) as exc_info:
+        provider.generate(_request())
+
+    assert getattr(exc_info.value, "raw_response", None) == json.dumps(malformed_body)
+
+
 def test_cancellation_after_transport_return_is_checked():
     class CancelAfterSend:
         checks = 0

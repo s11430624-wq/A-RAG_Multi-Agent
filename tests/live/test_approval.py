@@ -6,7 +6,10 @@ import pytest
 from pathlib import Path
 from experiments.live.smoke_gate import SmokeGateReport, FullRunApproval, FullRunApprovalValidator, SmokeGateAuditor
 
-def create_smoke_gate_mock_workspace(tmp_path: Path) -> tuple[Path, bytes, bytes, bytes, bytes, SmokeGateReport]:
+def create_smoke_gate_mock_workspace(
+    tmp_path: Path,
+    experiment_id: str = "m7d_smoke_20260611T123000Z",
+) -> tuple[Path, bytes, bytes, bytes, bytes, SmokeGateReport]:
     repo = tmp_path / "repo"
     repo.mkdir()
     
@@ -56,7 +59,6 @@ def create_smoke_gate_mock_workspace(tmp_path: Path) -> tuple[Path, bytes, bytes
     results_raw_dir = repo / "results" / "raw"
     results_raw_dir.mkdir(parents=True)
     
-    experiment_id = "m7d_smoke_20260611T123000Z"
     raw_jsonl_path = results_raw_dir / f"{experiment_id}.jsonl"
     
     run_id_a = f"{experiment_id}__T01__A__rep01__seed42"
@@ -237,6 +239,36 @@ def test_approval_validates_successfully(tmp_path):
     )
     
     # Re-reading and validating should succeed
+    FullRunApprovalValidator.validate_approval(
+        report_bytes=report_bytes,
+        approval=approval,
+        repo_root=repo,
+        leakage_evidence=leakage_evidence,
+        resume_evidence=resume_evidence,
+    )
+
+
+def test_approval_accepts_alternate_canonical_smoke_id(tmp_path):
+    experiment_id = "m7d_smoke_20260613T020000Z"
+    repo, report_bytes, _, _, _, report, leakage_evidence, resume_evidence = create_smoke_gate_mock_workspace(
+        tmp_path,
+        experiment_id=experiment_id,
+    )
+
+    report_sha = hashlib.sha256(report_bytes).hexdigest()
+
+    approval = FullRunApproval(
+        approved_smoke_report_path=str(repo / "results" / "raw" / "gates" / f"{report.smoke_experiment_id}.json"),
+        smoke_report_sha256=report_sha,
+        smoke_experiment_id=report.smoke_experiment_id,
+        full_experiment_id="m7e_full_20260613T021500Z",
+        approved_token_budget_input=10000,
+        approved_token_budget_output=5000,
+        approved_wall_clock_seconds=600.0,
+        allow_unknown_cost=True,
+        human_approval="FULL_RUN",
+    )
+
     FullRunApprovalValidator.validate_approval(
         report_bytes=report_bytes,
         approval=approval,

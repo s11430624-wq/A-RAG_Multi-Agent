@@ -171,19 +171,55 @@ def main(argv: list[str] | None = None) -> int:
                 human_approval=args.human_approval,
             )
 
+            jsonl_path = repo_root / "results" / "raw" / f"{args.full_experiment_id}.jsonl"
+            is_resume = False
+            if jsonl_path.is_file():
+                try:
+                    from experiments.runner.resume import load_completed_run_index
+                    completed_index = load_completed_run_index(
+                        raw_path=jsonl_path,
+                        schema_path=repo_root / "contracts" / "result.schema.json"
+                    )
+                    is_resume = len(completed_index.run_ids) > 0
+                except Exception:
+                    is_resume = False
             try:
                 # To check approval path, we pass is_resume if needed. But in CLI gate check, this is fresh run.
-                FullRunApprovalValidator.validate_approval(report_bytes, approval, repo_root)
+                FullRunApprovalValidator.validate_approval(report_bytes, approval, repo_root, is_resume=is_resume)
             except Exception as exc:
                 print(f"Error: Validation failed: {exc}")
                 return 2
 
-            if os.environ.get("ARAG_EXECUTE_FULL_RUN_ONCE") != "1":
+            is_fake_provider = os.environ.get("ARAG_USE_FAKE_FULL_RUN_PROVIDER") == "1"
+            pilot_run_count = args.pilot_run_count
+            if pilot_run_count is not None:
+                if pilot_run_count != 15:
+                    print("Error: --pilot-run-count must be exactly 15.")
+                    return 2
+                if (
+                    not is_fake_provider
+                    and os.environ.get("ARAG_EXECUTE_PILOT15_ONCE") != "1"
+                ):
+                    print(
+                        "Error: 15-run pilot live execution is blocked; "
+                        "ARAG_EXECUTE_PILOT15_ONCE=1 is required."
+                    )
+                    return 2
+                if (
+                    is_fake_provider
+                    and os.environ.get("ARAG_EXECUTE_FULL_RUN_ONCE") != "1"
+                ):
+                    print("full-run approval validated, execution requires M7-E.3 approval.")
+                    return 2
+            elif os.environ.get("ARAG_EXECUTE_FULL_RUN_ONCE") != "1":
                 print("full-run approval validated, execution requires M7-E.3 approval.")
                 return 2
 
-            is_fake_provider = os.environ.get("ARAG_USE_FAKE_FULL_RUN_PROVIDER") == "1"
-            if not is_fake_provider and "PYTEST_CURRENT_TEST" in os.environ:
+            if (
+                not is_fake_provider
+                and pilot_run_count is None
+                and "PYTEST_CURRENT_TEST" in os.environ
+            ):
                 print("full-run live execution is blocked until M7-E.3.")
                 return 2
 
@@ -220,6 +256,8 @@ def main(argv: list[str] | None = None) -> int:
             
             from experiments.live.smoke_executor import _bind_plan_to_request
             bound_runs = _bind_plan_to_request(plan.runs, args.full_experiment_id)
+            execution_runs = bound_runs[:15] if pilot_run_count == 15 else bound_runs
+            execution_mode = "pilot15" if pilot_run_count == 15 else "full"
             
             budget_limits = BudgetLimits(
                 max_total_input_tokens=args.approved_input_token_budget,
@@ -232,7 +270,10 @@ def main(argv: list[str] | None = None) -> int:
             )
             
             if is_fake_provider:
-                print("Starting 45-run fake/scripted provider dry activation run...")
+                if pilot_run_count == 15:
+                    print("Starting fixed first-15 fake/scripted provider dry activation run...")
+                else:
+                    print("Starting 45-run fake/scripted provider dry activation run...")
                 class DeterministicFakeFullRunProvider:
                     def __init__(self, run, hooks):
                         self.run = run
@@ -303,7 +344,10 @@ def main(argv: list[str] | None = None) -> int:
                 def final_provider_factory(run, hooks):
                     return DeterministicFakeFullRunProvider(run, hooks)
             else:
-                print("Starting 45-run REAL live provider execution run...")
+                if pilot_run_count == 15:
+                    print("Starting fixed first-15 REAL live provider pilot run...")
+                else:
+                    print("Starting 45-run REAL live provider execution run...")
                 from experiments.live.factory import LiveProviderFactory
                 def final_provider_factory(run, hooks):
                     return LiveProviderFactory.create_provider(
@@ -318,13 +362,13 @@ def main(argv: list[str] | None = None) -> int:
             request = LiveExecutionRequest(
                 experiment_id=args.full_experiment_id,
                 repo_root=repo_root,
-                planned_runs=bound_runs,
+                planned_runs=execution_runs,
                 raw_jsonl_path=(repo_root / "results" / "raw" / f"{args.full_experiment_id}.jsonl").resolve(),
                 artifact_root=(repo_root / "results" / "raw" / "artifacts" / args.full_experiment_id).resolve(),
                 retrieval_log_root=(repo_root / "results" / "raw" / "retrieval" / args.full_experiment_id).resolve(),
                 budget_limits=budget_limits,
                 provider_factory=final_provider_factory,
-                mode="full",
+                mode=execution_mode,
                 smoke_report_path=report_path,
             )
             
@@ -523,6 +567,7 @@ def _build_parser() -> argparse.ArgumentParser:
     live_run.add_argument("--approved-output-token-budget", type=int)
     live_run.add_argument("--approved-wall-clock-seconds", type=float)
     live_run.add_argument("--allow-unknown-cost", action="store_true")
+    live_run.add_argument("--pilot-run-count", type=int)
 
     exp_audit = subparsers.add_parser("experiment-audit")
     exp_audit.add_argument("--repo-root", required=True)

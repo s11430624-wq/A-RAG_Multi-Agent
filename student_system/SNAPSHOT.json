@@ -36,23 +36,23 @@
     },
     {
       "path": "student_system/tests/public/test_t01.py",
-      "sha256": "fc675331cabae95a7364c9477720ba64e379627688810db6281fa3df723c7d7b"
+      "sha256": "c9f65f6a28ebf38e90cb24ddf4bf6ac32fc16d37200078ca3615ee0988296e97"
     },
     {
       "path": "student_system/tests/public/test_t02.py",
-      "sha256": "75391cbacb7cc0a3d5c0fb5ce776ddcace079f154e681e0e6b969ce7eaf4dbe7"
+      "sha256": "85b39510dfadb962112e7bc46dec07fa10de0b9b095cd9eb335edfdf11483ab4"
     },
     {
       "path": "student_system/tests/public/test_t03.py",
-      "sha256": "28945c239176c29c03b8514a744f64a2f12a187e49176220ef38b647fa0519ef"
+      "sha256": "e9e33aa95dcb39f98c176c45a459efb13c49aec24e0f625b925bd1b98375186f"
     },
     {
       "path": "student_system/tests/public/test_t04.py",
-      "sha256": "9d5aced8b29faaf344fce0c2554477bf73bace1fda45ba63160d7430b27a6d26"
+      "sha256": "6cb3c605d7ff7b2078b13e118517626c6ab8f84a03083ef7a91f36ef3dc56438"
     },
     {
       "path": "student_system/tests/public/test_t05.py",
-      "sha256": "e507a9dcd85155fc39a4673ca437a235f07a3ced67e7294fc6330752b76df440"
+      "sha256": "9382be9e102704f2490eb245e7e2d1fe07cb172df427e42d9a36a0c9b522e0f7"
     }
   ]
 }

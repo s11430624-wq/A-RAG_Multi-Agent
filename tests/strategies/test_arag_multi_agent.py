@@ -13,7 +13,7 @@ from experiments.strategies.arag_multi_agent import ARAGMultiAgentStrategySessio
 from experiments.strategies.artifacts import ArtifactBundleWriter
 from experiments.strategies.models import ModelVisibleTask, StarterFile
 from experiments.strategies.multi_agent import MultiAgentStrategySession
-from experiments.strategies.parsers import RetrievalBudgetExceededError
+from experiments.strategies.parsers import RetrievalBudgetExceededError, StrategyResponseError
 from experiments.strategies.single_llm import SingleLLMStrategySession
 
 PLAN = '{"files_to_modify":["student_system/src/grade.py"],"implementation_steps":["change"],"risks":[]}'
@@ -220,6 +220,24 @@ def test_strategy_e_duplicate_keyword_search_reuses_cached_empty_result_without_
     assert len(provider.requests) == 6
     assert output.metrics.tool_calls == 1  # only 1 distinct call, others are cached
     # Since only 1 distinct call was made, only 1 log record should be written.
+    assert len(log_path.read_text(encoding="utf-8").splitlines()) == 1
+
+
+def test_strategy_e_third_cache_hit_fails_closed_before_another_model_call(tmp_path, project_root):
+    search_dup = '{"action":"retrieve","query":"calculate_pass_rate","tool":"keyword_search","top_k":1}'
+    session, provider, _store, log_path = _build(
+        tmp_path,
+        project_root,
+        (search_dup, search_dup, search_dup, search_dup, PLAN),
+    )
+
+    with pytest.raises(
+        RetrievalBudgetExceededError,
+        match="Planner/initial cached retrieval repetition limit exceeded",
+    ):
+        session.generate_initial_patch()
+
+    assert len(provider.requests) == 4
     assert len(log_path.read_text(encoding="utf-8").splitlines()) == 1
 
 
@@ -694,3 +712,92 @@ def test_frozen_hashes_unchanged(project_root):
         assert hashlib.sha256(artifact_path.read_bytes()).hexdigest() == expected_hash
 
 
+def test_retrieved_queries_are_accumulated_and_injected_in_session(tmp_path, project_root):
+    search_q = '{"action":"retrieve","query":"calculate_pass_rate","tool":"keyword_search","top_k":1}'
+    session, provider, _store, log_path = _build(
+        tmp_path,
+        project_root,
+        (search_q, PLAN, DIFF, REVIEW),
+    )
+    session.generate_initial_patch()
+
+    assert "<RETRIEVED_QUERIES>" not in provider.requests[0].user_prompt
+    assert "<RETRIEVED_QUERIES>" in provider.requests[1].user_prompt
+    assert "calculate_pass_rate" in provider.requests[1].user_prompt
+    assert "You MUST perform retrieval using this format at least once" in provider.requests[1].user_prompt
+    assert "<RETRIEVED_QUERIES>" not in provider.requests[2].user_prompt
+
+
+def test_coder_prompt_relaxes_when_inherited_planner_evidence_is_visible(tmp_path, project_root):
+    search_q = '{"action":"retrieve","query":"grades","tool":"keyword_search","top_k":1}'
+    session, provider, _store, _log_path = _build(
+        tmp_path,
+        project_root,
+        (search_q, PLAN, DIFF, REVIEW),
+    )
+
+    session.generate_initial_patch()
+
+    coder_prompt = provider.requests[2].user_prompt
+    assert "You MUST perform retrieval using this format at least once" not in coder_prompt
+    assert "You have already performed retrieval. If you have sufficient information" in coder_prompt
+
+
+def test_cache_hit_loop_adds_forward_progress_note_to_next_turn(tmp_path, project_root):
+    search_dup = '{"action":"retrieve","query":"calculate_pass_rate","tool":"keyword_search","top_k":1}'
+    session, provider, _store, _log_path = _build(
+        tmp_path,
+        project_root,
+        (search_dup, search_dup, PLAN, DIFF, REVIEW),
+    )
+
+    session.generate_initial_patch()
+
+    assert "already satisfied by visible evidence" in provider.requests[2].user_prompt
+
+
+def test_strategy_e_invalid_coder_response_preserves_raw_response_and_role(tmp_path, project_root):
+    invalid_coder = "I think the fix is simple: update the function accordingly."
+    session, _provider, _store, _log_path = _build(
+        tmp_path,
+        project_root,
+        (SEARCH, PLAN, invalid_coder),
+    )
+
+    with pytest.raises(StrategyResponseError, match="Coder returned invalid response") as exc_info:
+        session.generate_initial_patch()
+
+    assert getattr(exc_info.value, "raw_response", None) == invalid_coder
+    assert getattr(exc_info.value, "role", None) == "Coder"
+
+
+def test_strategy_e_invalid_retrieval_request_preserves_raw_response_and_role(tmp_path, project_root):
+    invalid_retrieval = '{"action":"retrieve","query":"api","tool":"keyword_search","top_k":"oops"}'
+    session, _provider, _store, _log_path = _build(
+        tmp_path,
+        project_root,
+        (invalid_retrieval,),
+    )
+
+    with pytest.raises(StrategyResponseError, match="top_k must be an integer from 1 to 3") as exc_info:
+        session.generate_initial_patch()
+
+    assert getattr(exc_info.value, "raw_response", None) == invalid_retrieval
+    assert getattr(exc_info.value, "role", None) == "Planner"
+
+
+def test_strategy_e_coder_accepts_single_fenced_diff_with_leading_text(tmp_path, project_root):
+    fenced_patch = "note before\n```diff\n" + DIFF + "\n```"
+    session, _provider, _store, _log_path = _build(
+        tmp_path,
+        project_root,
+        (SEARCH, PLAN, fenced_patch, REVIEW),
+    )
+
+    output = session.generate_initial_patch()
+
+    assert output.patch.startswith("--- ")
+    assert "\n+++ " in output.patch
+    assert "\n@@ " in output.patch
+    assert "```" not in output.patch
+    assert output.metrics.tool_calls == 1

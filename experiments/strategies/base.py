@@ -165,6 +165,8 @@ class BaseStrategySession:
             self.artifact_writer.stage_bytes(f"responses/{prefix}.txt", response.text.encode("utf-8"))
             return parsed, response.text, self.metrics_collector.snapshot()
         except ProviderError as exc:
+            if not hasattr(exc, "role"):
+                setattr(exc, "role", role)
             self.metrics_collector.record_error(exc)
             self._terminal_close()
             raise

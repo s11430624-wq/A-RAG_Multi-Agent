@@ -1,31 +1,75 @@
 --- a/student_system/src/utils.py
 +++ b/student_system/src/utils.py
-@@ -3,3 +3,9 @@
+@@ -3,3 +3,29 @@
      if score > 0 and score < 100:
          return True
      return False
 +
-+def validate_score(score: object) -> None:
++
++def summarize_grade_records(records: list[dict]) -> dict:
++    from student_system.src import grade
++
++    total_courses = len(records)
++    if total_courses == 0:
++        return {
++            "total_courses": 0,
++            "passed_courses": 0,
++            "failed_courses": 0,
++            "pass_rate": 0.0,
++            "average_gpa": 0.0,
++        }
++
++    passed_courses = sum(1 for record in records if record["score"] >= 60)
++    failed_courses = total_courses - passed_courses
++    average_gpa = round(sum(grade.score_to_gpa(record["score"]) for record in records) / total_courses, 4)
++    pass_rate = round(passed_courses / total_courses, 4)
++    return {
++        "total_courses": total_courses,
++        "passed_courses": passed_courses,
++        "failed_courses": failed_courses,
++        "pass_rate": pass_rate,
++        "average_gpa": average_gpa,
++    }
+--- a/student_system/src/course.py
++++ b/student_system/src/course.py
+@@ -20,3 +20,15 @@
+     if course_id not in _COURSES:
+         raise ValueError("Course not found")
+     return [get_student_by_id(sid) for sid in _ENROLLMENT[course_id]]
++
++def get_course_pass_stats(course_id: str) -> dict:
++    from student_system.src import grade, utils
++
++    course_record = get_course_by_id(course_id)
++    stats = utils.summarize_grade_records(grade.get_grades_by_course(course_id))
++    return {
++        "course_id": course_record["course_id"],
++        "title": course_record["title"],
++        "credits": course_record["credits"],
++        **stats,
++    }
+--- a/student_system/src/grade.py
++++ b/student_system/src/grade.py
+@@ -12,13 +12,20 @@
+     return [g.copy() for g in _GRADES if g["course_id"] == course_id]
+ 
+ def score_to_gpa(score: int | float) -> float:
+-    # Deliberate starter bugs (Issue #1 in ISSUES.md)
 +    if isinstance(score, bool) or not isinstance(score, (int, float)):
 +        raise ValueError("Invalid score")
 +    if score < 0 or score > 100:
 +        raise ValueError("Invalid score")
---- a/student_system/src/student.py
-+++ b/student_system/src/student.py
-@@ -14,5 +14,4 @@
- def update_student_score(student_id: str, score: int | float) -> None:
--    # Hardcoded check to be removed in T05 refactoring
--    if score < 0 or score > 100:
--        raise ValueError("Invalid Score")
-+    from student_system.src.utils import validate_score
-+    validate_score(score)
-     get_student_by_id(student_id)
---- a/student_system/src/grade.py
-+++ b/student_system/src/grade.py
-@@ -26,4 +26,3 @@
- def add_grade(student_id: str, course_id: str, score: int | float) -> None:
--    # Hardcoded check to be removed in T05 refactoring
--    if score < 0 or score > 100:
--        raise ValueError("Invalid Score")
-+    from student_system.src.utils import validate_score
-+    validate_score(score)
+     if score >= 90:
+         return 4.0
++    if score >= 85:
++        return 3.5
+     if score >= 80:
+         return 3.0
++    if score >= 75:
++        return 2.5
+     if score >= 70:
+-        return 1.5
++        return 2.0
+     if score >= 60:
+         return 1.0
+     return 0.0

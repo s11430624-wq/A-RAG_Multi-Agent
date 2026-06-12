@@ -901,9 +901,12 @@ class FullRunApprovalValidator:
 
         report_data = json.loads(physical_report_bytes.decode("utf-8"))
 
-        if report_data.get("smoke_experiment_id") != "m7d_smoke_20260611T123000Z":
-            raise ValueError("smoke_experiment_id must be m7d_smoke_20260611T123000Z")
-        if report_data.get("smoke_experiment_id") != approval.smoke_experiment_id:
+        report_smoke_id = report_data.get("smoke_experiment_id")
+        if not isinstance(report_smoke_id, str) or not re.match(r"^m7d_smoke_[0-9]{8}T[0-9]{6}Z$", report_smoke_id):
+            raise ValueError("smoke_experiment_id must match format ^m7d_smoke_[0-9]{8}T[0-9]{6}Z$")
+        if not isinstance(approval.smoke_experiment_id, str) or not re.match(r"^m7d_smoke_[0-9]{8}T[0-9]{6}Z$", approval.smoke_experiment_id):
+            raise ValueError("approval.smoke_experiment_id must match format ^m7d_smoke_[0-9]{8}T[0-9]{6}Z$")
+        if report_smoke_id != approval.smoke_experiment_id:
             raise ValueError("Smoke experiment ID mismatch")
 
         # 5. Check automated gate passed

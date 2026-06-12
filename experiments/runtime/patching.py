@@ -18,6 +18,7 @@ class PatchApplyError(PatchError):
 # Hunk header regex: @@ -start_line,num_lines +start_line,num_lines @@
 # Ensure there is either EOL or a space and optional heading after the closing @@ to reject trailing garbage.
 HUNK_HEADER_RE = re.compile(r"^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(?:$| ([^\s].*(?<!\s))$)")
+MAX_HUNK_OFFSET_LINES = 5
 
 def parse_patch(patch_content: str, files_to_modify: List[str]) -> Dict[str, List[dict]]:
     if not patch_content or not patch_content.strip():
@@ -179,6 +180,34 @@ def parse_patch(patch_content: str, files_to_modify: List[str]) -> Dict[str, Lis
         
     return sections
 
+def _hunk_old_lines(hunk_lines: List[str]) -> List[str]:
+    return [line[1:] for line in hunk_lines if line.startswith((" ", "-"))]
+
+
+def _matches_old_lines(file_lines: List[str], start_idx: int, old_lines: List[str]) -> bool:
+    end_idx = start_idx + len(old_lines)
+    return 0 <= start_idx and end_idx <= len(file_lines) and file_lines[start_idx:end_idx] == old_lines
+
+
+def _resolve_hunk_target(file_lines: List[str], target_idx: int, hunk_lines: List[str]) -> int:
+    old_lines = _hunk_old_lines(hunk_lines)
+    if not old_lines or _matches_old_lines(file_lines, target_idx, old_lines):
+        return target_idx
+
+    lower = max(0, target_idx - MAX_HUNK_OFFSET_LINES)
+    upper = min(len(file_lines) - len(old_lines), target_idx + MAX_HUNK_OFFSET_LINES)
+    candidates = [
+        candidate
+        for candidate in range(lower, upper + 1)
+        if _matches_old_lines(file_lines, candidate, old_lines)
+    ]
+    if len(candidates) > 1:
+        raise PatchApplyError("Hunk context is ambiguous within the allowed offset window")
+    if len(candidates) == 1:
+        return candidates[0]
+    return target_idx
+
+
 def apply_hunks(file_content: str, hunks: List[dict]) -> str:
     file_lines = file_content.split('\n')
     offset = 0
@@ -189,10 +218,11 @@ def apply_hunks(file_content: str, hunks: List[dict]) -> str:
         if target_idx < 0 or target_idx > len(file_lines):
             raise PatchApplyError(f"Hunk old_start {hunk['old_start']} is out of bounds")
             
+        hunk_lines = hunk["lines"]
+        target_idx = _resolve_hunk_target(file_lines, target_idx, hunk_lines)
         base_idx = target_idx
         new_file_lines = []
-        
-        hunk_lines = hunk["lines"]
+
         for hl in hunk_lines:
             if hl.startswith(" ") or hl.startswith("-"):
                 expected_line = hl[1:]

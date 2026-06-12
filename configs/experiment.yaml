@@ -21,7 +21,7 @@ seed: 42
 
 # 各階段超時時間設定（秒）
 timeout:
-  agent_response: 120      # 單一 Agent 單次推論時間上限
+  agent_response: 240      # 單一 Agent 單次推論時間上限
   unit_test: 30             # 測試執行時間上限
   total_run: 600            # 單次完整實驗執行時間上限
 

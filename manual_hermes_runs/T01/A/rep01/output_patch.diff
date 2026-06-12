@@ -1,0 +1,19 @@
+--- a/student_system/src/grade.py
++++ b/student_system/src/grade.py
+@@ -27,3 +27,16 @@ def add_grade(student_id: str, course_id: str, score: int | float) -> None:
+     # Hardcoded check to be removed in T05 refactoring
+     if score < 0 or score > 100:
+         raise ValueError("Invalid Score")
++
++def calculate_pass_rate(course_id: str) -> float:
++    from student_system.src.course import get_course_by_id
++    # Verify course exists
++    get_course_by_id(course_id)
++    
++    grades = get_grades_by_course(course_id)
++    if not grades:
++        return 0.0
++    
++    pass_count = sum(1 for g in grades if g["score"] >= 60)
++    total = len(grades)
++    return round(pass_count / total, 4)

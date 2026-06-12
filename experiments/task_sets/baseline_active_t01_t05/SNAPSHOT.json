@@ -1,0 +1,58 @@
+{
+  "snapshot_id": "snap_v1_starter_20260611",
+  "created_at": "2026-06-11T12:00:00Z",
+  "files": [
+    {
+      "path": "student_system/README.md",
+      "sha256": "64364a3a39c38c10834c6c2488a3ff1bf4f0008aefe1b0d0392f29fc70d2108e"
+    },
+    {
+      "path": "student_system/API_SPEC.md",
+      "sha256": "65c0cfa33d844809d8a1f77136e2bf41b09989e6d1fcb4aaa04869527f3f4aa7"
+    },
+    {
+      "path": "student_system/STYLE_GUIDE.md",
+      "sha256": "9835a404f1deeef7799f12c66884d71d1cdecdcee4992db534b69471ebcc33bf"
+    },
+    {
+      "path": "student_system/ISSUES.md",
+      "sha256": "bf575939716607e11b35e2653376c8a3531766ed1c2b320cb8e777ccb0116a58"
+    },
+    {
+      "path": "student_system/src/student.py",
+      "sha256": "77148c69c516c28a56db2726d74c111156f95238ac255456d822bbd1032922fe"
+    },
+    {
+      "path": "student_system/src/course.py",
+      "sha256": "b69e280b418fea27c7e61aa46ba7a443f4b5cc3cec0f4ad2962b3b0887aca8e3"
+    },
+    {
+      "path": "student_system/src/grade.py",
+      "sha256": "00fa30d01a04aa9da1fabfc1e957636e87446ffd4874c1e1f6f696e53b661ce4"
+    },
+    {
+      "path": "student_system/src/utils.py",
+      "sha256": "99b1f0bffcead19142197a5078bf864a4c4dcda5f81ad8d14c95ea4f2d5fec8d"
+    },
+    {
+      "path": "student_system/tests/public/test_t01.py",
+      "sha256": "fc675331cabae95a7364c9477720ba64e379627688810db6281fa3df723c7d7b"
+    },
+    {
+      "path": "student_system/tests/public/test_t02.py",
+      "sha256": "75391cbacb7cc0a3d5c0fb5ce776ddcace079f154e681e0e6b969ce7eaf4dbe7"
+    },
+    {
+      "path": "student_system/tests/public/test_t03.py",
+      "sha256": "28945c239176c29c03b8514a744f64a2f12a187e49176220ef38b647fa0519ef"
+    },
+    {
+      "path": "student_system/tests/public/test_t04.py",
+      "sha256": "9d5aced8b29faaf344fce0c2554477bf73bace1fda45ba63160d7430b27a6d26"
+    },
+    {
+      "path": "student_system/tests/public/test_t05.py",
+      "sha256": "e507a9dcd85155fc39a4673ca437a235f07a3ced67e7294fc6330752b76df440"
+    }
+  ]
+}

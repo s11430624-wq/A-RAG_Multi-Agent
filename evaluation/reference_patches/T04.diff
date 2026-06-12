@@ -1,13 +1,79 @@
 --- a/student_system/src/utils.py
 +++ b/student_system/src/utils.py
-@@ -1,5 +1,6 @@
- def is_valid_score(score: object) -> bool:
--    # Deliberate starter bugs (Issue #2 in ISSUES.md)
--    if score > 0 and score < 100:
--        return True
--    return False
-+    if isinstance(score, bool):
-+        return False
-+    if not isinstance(score, (int, float)):
-+        return False
-+    return 0 <= score <= 100
+@@ -3,3 +3,10 @@
+     if score > 0 and score < 100:
+         return True
+     return False
++
++
++def validate_score(score: object) -> None:
++    if isinstance(score, bool) or not isinstance(score, (int, float)):
++        raise ValueError("Invalid score")
++    if score < 0 or score > 100:
++        raise ValueError("Invalid score")
+--- a/student_system/src/grade.py
++++ b/student_system/src/grade.py
+@@ -12,13 +12,20 @@
+     return [g.copy() for g in _GRADES if g["course_id"] == course_id]
+ 
+ def score_to_gpa(score: int | float) -> float:
+-    # Deliberate starter bugs (Issue #1 in ISSUES.md)
++    if isinstance(score, bool) or not isinstance(score, (int, float)):
++        raise ValueError("Invalid score")
++    if score < 0 or score > 100:
++        raise ValueError("Invalid score")
+     if score >= 90:
+         return 4.0
++    if score >= 85:
++        return 3.5
+     if score >= 80:
+         return 3.0
++    if score >= 75:
++        return 2.5
+     if score >= 70:
+-        return 1.5
++        return 2.0
+     if score >= 60:
+         return 1.0
+     return 0.0
+@@ -27,3 +34,40 @@
+     # Hardcoded check to be removed in T05 refactoring
+     if score < 0 or score > 100:
+         raise ValueError("Invalid Score")
++
++
++def preview_bulk_score_update(updates: list[dict]) -> dict:
++    from student_system.src import course, student, utils
++
++    valid_updates = []
++    invalid_updates = []
++    for index, item in enumerate(updates):
++        try:
++            student.get_student_by_id(item["student_id"])
++            course.get_course_by_id(item["course_id"])
++            utils.validate_score(item["score"])
++            normalized_score = float(item["score"])
++            if normalized_score.is_integer():
++                normalized_score = int(normalized_score)
++            valid_updates.append({
++                "student_id": item["student_id"],
++                "course_id": item["course_id"],
++                "score": item["score"],
++                "normalized_score": normalized_score,
++                "gpa": score_to_gpa(normalized_score),
++            })
++        except Exception as exc:
++            invalid_updates.append({
++                "index": index,
++                "input": dict(item),
++                "reason": str(exc),
++            })
++    return {
++        "valid_updates": valid_updates,
++        "invalid_updates": invalid_updates,
++        "summary": {
++            "total": len(updates),
++            "valid": len(valid_updates),
++            "invalid": len(invalid_updates),
++        },
++    }

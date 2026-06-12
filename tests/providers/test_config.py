@@ -32,8 +32,8 @@ def test_existing_configs_load_exact_provider_parameters(
             model="google/gemini-3.5-flash",
             temperature=0.0,
             top_p=0.95,
-            max_output_tokens=4096,
-            timeout_seconds=120.0,
+            max_output_tokens=12288,
+            timeout_seconds=240.0,
             seed=42,
         ),
         capabilities=ProviderCapabilities(

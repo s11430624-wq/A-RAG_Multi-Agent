@@ -168,6 +168,46 @@ def test_patch_context_mismatch_transactional(workspace_with_files):
         student_content = f.read()
     assert student_content == "line 1\nline 2\nline 3\n"
 
+
+def test_patch_small_hunk_offset_applies_when_context_is_unique(workspace_with_files):
+    patch = (
+        "--- student_system/src/student.py\n"
+        "+++ student_system/src/student.py\n"
+        "@@ -3,1 +3,2 @@\n"
+        " line 2\n"
+        "+inserted\n"
+    )
+
+    PatchEngine.apply_patch(
+        workspace_with_files,
+        patch,
+        ["student_system/src/student.py"],
+    )
+
+    assert (
+        workspace_with_files / "student_system" / "src" / "student.py"
+    ).read_text(encoding="utf-8") == "line 1\nline 2\ninserted\nline 3\n"
+
+
+def test_patch_small_hunk_offset_rejects_ambiguous_context(workspace_with_files):
+    target = workspace_with_files / "student_system" / "src" / "student.py"
+    target.write_text("same\nmiddle\nsame\n", encoding="utf-8", newline="")
+    patch = (
+        "--- student_system/src/student.py\n"
+        "+++ student_system/src/student.py\n"
+        "@@ -2,1 +2,2 @@\n"
+        " same\n"
+        "+inserted\n"
+    )
+
+    with pytest.raises(PatchApplyError, match="ambiguous"):
+        PatchEngine.apply_patch(
+            workspace_with_files,
+            patch,
+            ["student_system/src/student.py"],
+        )
+
+
 def test_patch_empty_or_whitespace_rejected(workspace_with_files):
     with pytest.raises(InvalidPatchError):
         PatchEngine.apply_patch(workspace_with_files, "", ["student_system/src/student.py"])
@@ -364,4 +404,3 @@ def test_patch_hunk_header_legal_optional_heading(workspace_with_files):
     PatchEngine.apply_patch(workspace_with_files, patch, ["student_system/src/student.py"])
     with open(workspace_with_files / "student_system" / "src" / "student.py", "r", encoding="utf-8") as f:
         assert f.read() == "line 1\nline 2 modified\nline 3\n"
-

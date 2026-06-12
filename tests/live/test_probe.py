@@ -146,7 +146,7 @@ repetitions: 1
 max_repair_rounds: 1
 seed: 42
 timeout:
-  agent_response: 120
+  agent_response: 240
   unit_test: 30
   total_run: 600
 model_provider_id: "hermes_vertex_gateway"

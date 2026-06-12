@@ -1,0 +1,31 @@
+--- a/student_system/src/grade.py
++++ b/student_system/src/grade.py
+@@ -14,11 +14,18 @@
+ def score_to_gpa(score: int | float) -> float:
+-    # Deliberate starter bugs (Issue #1 in ISSUES.md)
+-    if score >= 90:
+-        return 4.0
+-    if score >= 80:
+-        return 3.0
+-    if score >= 70:
+-        return 1.5
+-    if score >= 60:
+-        return 1.0
+-    return 0.0
++    if isinstance(score, bool) or not isinstance(score, (int, float)):
++        raise ValueError("Invalid score type")
++    if score < 0 or score > 100:
++        raise ValueError("Score out of bounds")
++    if score >= 90:
++        return 4.0
++    elif score >= 85:
++        return 3.5
++    elif score >= 80:
++        return 3.0
++    elif score >= 75:
++        return 2.5
++    elif score >= 70:
++        return 2.0
++    elif score >= 60:
++        return 1.0
++    return 0.0

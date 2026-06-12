@@ -1,0 +1,12 @@
+--- a/student_system/src/utils.py
++++ b/student_system/src/utils.py
+@@ -1,5 +1,6 @@
+ def is_valid_score(score: object) -> bool:
+-    # Deliberate starter bugs (Issue #2 in ISSUES.md)
+-    if score > 0 and score < 100:
+-        return True
++    # Check for numeric types (int, float) but exclude bool (which is a subclass of int)
++    if isinstance(score, (int, float)) and not isinstance(score, bool):
++        if 0 <= score <= 100:
++            return True
+     return False

@@ -1,0 +1,23 @@
+--- a/student_system/src/student.py
++++ b/student_system/src/student.py
+@@ -1,3 +1,5 @@
++from student_system.src import grade, course
++
+ _STUDENTS = {
+     "S001": {"student_id": "S001", "name": "Alice"},
+     "S002": {"student_id": "S002", "name": "Bob"}
+@@ -12,3 +14,14 @@
+     if score < 0 or score > 100:
+         raise ValueError("Invalid Score")
+     get_student_by_id(student_id)
++
++def get_student_course_summary(student_id: str) -> dict:
++    student = get_student_by_id(student_id)
++    grades = grade.get_grades_by_student(student_id)
++    
++    course_list = []
++    for g in grades:
++        c = course.get_course_by_id(g["course_id"])
++        course_list.append({"title": c["title"], "credits": c["credits"]})
++        
++    return {"student_id": student_id, "courses": course_list}

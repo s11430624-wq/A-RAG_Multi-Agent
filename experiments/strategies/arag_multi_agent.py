@@ -36,6 +36,7 @@ from experiments.strategies.parsers import (
 
 class ARAGMultiAgentStrategySession(BaseStrategySession):
     _BUDGETS = {("Planner", "initial"): 5, ("Coder", "initial"): 3, ("Reviewer", "initial"): 1}
+    _MAX_CACHE_HITS_PER_ROLE_PHASE = 2
 
     def __init__(
         self,
@@ -181,19 +182,30 @@ class ARAGMultiAgentStrategySession(BaseStrategySession):
         inherited_evidence_ids: tuple[str, ...] = (),
     ) -> Any:
         retrieval_count = 0
+        cache_hit_count = 0
         budget = 2 if phase.startswith("repair_") else self._BUDGETS[(role, phase)]
+        retrieved_queries: list[Any] = []
+        retrieval_progress_note: str | None = None
         while True:
             visible_evidence = tuple(
                 item
                 for item in self.evidence_ledger.items
                 if (item.role == role and item.phase == phase) or item.evidence_id in inherited_evidence_ids
             )
+            has_visible_retrieval_evidence = any(
+                item.tool_name in ("keyword_search", "semantic_search", "chunk_read")
+                for item in visible_evidence
+            )
+            retrieval_required = role in ("Planner", "Coder") and not has_visible_retrieval_evidence
             rendered = self.prompt_loader.render(
                 template_name,
                 task=self.task,
                 capability=CapabilityContext(True),
                 data=data,
                 evidence=visible_evidence,
+                retrieved_queries=tuple(retrieved_queries),
+                retrieval_required=retrieval_required,
+                retrieval_progress_note=retrieval_progress_note,
             )
             self._call_index += 1
             request = ModelRequest(
@@ -214,14 +226,22 @@ class ARAGMultiAgentStrategySession(BaseStrategySession):
                     finish_reason=response.finish_reason,
                 )
                 if classification.kind == "retrieval_request":
-                    retrieval_request = RetrievalRequestParser.parse(
-                        response.text,
-                        ledger=self.evidence_ledger,
-                        run_id=self.run_id,
-                        task_id=self.task.task_id,
-                        role=role,
-                        phase=phase,
-                    )
+                    try:
+                        retrieval_request = RetrievalRequestParser.parse(
+                            response.text,
+                            ledger=self.evidence_ledger,
+                            run_id=self.run_id,
+                            task_id=self.task.task_id,
+                            role=role,
+                            phase=phase,
+                        )
+                    except Exception as parser_exc:
+                        if not hasattr(parser_exc, "raw_response"):
+                            setattr(parser_exc, "raw_response", response.text)
+                        if not hasattr(parser_exc, "role"):
+                            setattr(parser_exc, "role", role)
+                        raise
+                    retrieved_queries.append(retrieval_request)
                     # Construct cache key
                     if hasattr(retrieval_request, "tool"):
                         if retrieval_request.tool == "chunk_read":
@@ -232,6 +252,15 @@ class ARAGMultiAgentStrategySession(BaseStrategySession):
                         cache_key = None
 
                     if cache_key is not None and cache_key in self.retrieval_cache:
+                        if cache_hit_count >= self._MAX_CACHE_HITS_PER_ROLE_PHASE:
+                            raise RetrievalBudgetExceededError(
+                                f"{role}/{phase} cached retrieval repetition limit exceeded"
+                            )
+                        cache_hit_count += 1
+                        retrieval_progress_note = (
+                            "The requested retrieval is already satisfied by visible evidence. "
+                            "Do not repeat the same retrieval. Proceed using the current evidence."
+                        )
                         self._record_accepted_response(response, rendered, role, phase, template_name)
                         continue
 
@@ -242,12 +271,23 @@ class ARAGMultiAgentStrategySession(BaseStrategySession):
                     if cache_key is not None:
                         self.retrieval_cache[cache_key] = result
                     retrieval_count += 1
+                    retrieval_progress_note = None
                     self.metrics_collector.record_tool_result(token_count=result.token_count)
                     self._append_evidence(role, phase, result)
                     continue
                 if classification.kind != "final_output":
-                    raise StrategyResponseError(f"{role} returned invalid response")
-                parsed = final_parser(response.text)
+                    exc = StrategyResponseError(f"{role} returned invalid response")
+                    exc.raw_response = response.text
+                    exc.role = role
+                    raise exc
+                try:
+                    parsed = final_parser(response.text)
+                except Exception as parser_exc:
+                    if not hasattr(parser_exc, "raw_response"):
+                        setattr(parser_exc, "raw_response", response.text)
+                    if not hasattr(parser_exc, "role"):
+                        setattr(parser_exc, "role", role)
+                    raise parser_exc
                 self._record_accepted_response(response, rendered, role, phase, template_name)
                 return parsed
             except ProviderError as exc:

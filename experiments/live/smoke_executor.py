@@ -17,7 +17,13 @@ from experiments.live.smoke_gate import (
     SmokeGateReport,
 )
 from experiments.live.smoke_scheduler import build_smoke_scheduler_plan
-from experiments.providers.models import ModelProvider, ProviderError
+from experiments.providers.models import (
+    ModelProvider,
+    ProviderEmptyResponseError,
+    ProviderError,
+    ProviderFinishReasonError,
+    ProviderMalformedResponseError,
+)
 from experiments.runner.config import ExperimentPaths, load_experiment_config
 from experiments.runner.identity import make_run_id
 from experiments.runner.orchestrator import ExperimentOrchestrator
@@ -125,7 +131,7 @@ class LiveExperimentExecutor:
         
         if request.mode == "smoke":
             config = _load_smoke_config(request, repo_root)
-        elif request.mode == "full":
+        elif request.mode in ("full", "pilot15"):
             config = _load_full_config(request, repo_root)
         else:
             raise ValueError(f"invalid mode: {request.mode}")
@@ -219,15 +225,22 @@ class LiveExperimentExecutor:
                         check_budget_fn=tracker._check_wall_clock,
                     )
             except Exception as exc:
+                import traceback
+                print("--- RUNTIME EXCEPTION IN LIVE-RUN EXECUTION ---")
+                traceback.print_exc()
+                print("-----------------------------------------------")
                 from experiments.live.diagnostics import write_provider_failure_diagnostic
-                write_provider_failure_diagnostic(
-                    approved_root=repo_root,
-                    experiment_id=request.experiment_id,
-                    run=run,
-                    config=config,
-                    exc=exc,
-                    elapsed_seconds=tracker.clock() - tracker.start_time,
-                )
+                try:
+                    write_provider_failure_diagnostic(
+                        approved_root=repo_root,
+                        experiment_id=request.experiment_id,
+                        run=run,
+                        config=config,
+                        exc=exc,
+                        elapsed_seconds=tracker.clock() - tracker.start_time,
+                    )
+                except FileExistsError as diag_err:
+                    print(f"Warning: could not write failure diagnostic because it already exists: {diag_err}")
                 return LiveExecutionResult(
                     completed_run_ids=tuple(completed_run_ids + completed_this_session),
                     attempted_run_count=len(pending_runs),
@@ -357,7 +370,15 @@ class _BudgetedProvider:
                 )
             except Exception:
                 pass
-            self.tracker.record_failure(is_infra=True, is_gateway=True)
+            is_infra = not isinstance(
+                exc,
+                (
+                    ProviderEmptyResponseError,
+                    ProviderMalformedResponseError,
+                    ProviderFinishReasonError,
+                ),
+            )
+            self.tracker.record_failure(is_infra=is_infra, is_gateway=is_infra)
             raise
         _assert_attempt_accounting(
             before_attempts,
@@ -380,8 +401,11 @@ class _CompletedOnlyWriter:
         self._active_exception = exc
 
     def append(self, record) -> None:
-        if record.get("infra_error") or not record.get("valid_run"):
-            print("REJECTED RECORD:", record)
+        if (
+            record.get("infra_error")
+            or not record.get("valid_run")
+            or record.get("error_type") != "none"
+        ):
             exc_val = self._active_exception
             self._active_exception = None
             if exc_val is not None:
@@ -436,7 +460,7 @@ def validate_live_execution_request(request: LiveExecutionRequest) -> Path:
             Path(request.retrieval_log_root).resolve(): raw_root / "retrieval" / request.experiment_id,
             Path(request.smoke_report_path).resolve(): raw_root / "gates" / f"{request.experiment_id}.json",
         }
-    elif request.mode == "full":
+    elif request.mode in ("full", "pilot15"):
         if _FULL_RUN_EXPERIMENT_ID.fullmatch(request.experiment_id) is None:
             raise ValueError("invalid full experiment_id")
         
@@ -503,6 +527,26 @@ def validate_live_execution_request(request: LiveExecutionRequest) -> Path:
             count_t = sum(1 for r in request.planned_runs if r.identity.task_id == t)
             if count_t != 9:
                 raise ValueError(f"full mode requires exactly 9 runs per task, got {t}={count_t}")
+    elif request.mode == "pilot15":
+        expected = tuple(
+            ("T01", strategy, repetition)
+            for strategy in ("A", "C", "E")
+            for repetition in (1, 2, 3)
+        ) + tuple(
+            ("T02", strategy, repetition)
+            for strategy in ("A", "C")
+            for repetition in (1, 2, 3)
+        )
+        actual = tuple(
+            (
+                run.identity.task_id,
+                run.identity.strategy,
+                run.identity.repetition,
+            )
+            for run in request.planned_runs
+        )
+        if actual != expected:
+            raise ValueError("pilot15 mode requires the canonical first 15 planned runs")
                 
     return repo_root
 

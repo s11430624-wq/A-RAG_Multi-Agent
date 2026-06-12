@@ -1,31 +1,58 @@
+--- a/student_system/src/student.py
++++ b/student_system/src/student.py
+@@ -16,3 +16,30 @@
+     if score < 0 or score > 100:
+         raise ValueError("Invalid Score")
+     get_student_by_id(student_id)
++
++def get_honor_roll_students(min_average_gpa: float = 3.0) -> list[dict]:
++    from student_system.src import grade
++
++    if isinstance(min_average_gpa, bool) or not isinstance(min_average_gpa, (int, float)):
++        raise ValueError("Invalid GPA threshold")
++    if min_average_gpa < 0.0 or min_average_gpa > 4.0:
++        raise ValueError("Invalid GPA threshold")
++
++    qualified = []
++    for student_record in get_all_students():
++        grades = grade.get_grades_by_student(student_record["student_id"])
++        if not grades:
++            continue
++        scores = [record["score"] for record in grades]
++        if any(score < 60 for score in scores):
++            continue
++        gpas = [grade.score_to_gpa(score) for score in scores]
++        average_gpa = round(sum(gpas) / len(gpas), 4)
++        if average_gpa >= float(min_average_gpa):
++            qualified.append({
++                "student_id": student_record["student_id"],
++                "name": student_record["name"],
++                "average_gpa": average_gpa,
++                "total_courses": len(grades),
++            })
++    return sorted(qualified, key=lambda item: (-item["average_gpa"], item["student_id"]))
 --- a/student_system/src/grade.py
 +++ b/student_system/src/grade.py
-@@ -14,11 +14,18 @@
+@@ -12,13 +12,20 @@
+     return [g.copy() for g in _GRADES if g["course_id"] == course_id]
+ 
  def score_to_gpa(score: int | float) -> float:
 -    # Deliberate starter bugs (Issue #1 in ISSUES.md)
--    if score >= 90:
--        return 4.0
--    if score >= 80:
--        return 3.0
--    if score >= 70:
--        return 1.5
--    if score >= 60:
--        return 1.0
--    return 0.0
 +    if isinstance(score, bool) or not isinstance(score, (int, float)):
-+        raise ValueError("Invalid score type")
++        raise ValueError("Invalid score")
 +    if score < 0 or score > 100:
-+        raise ValueError("Score out of bounds")
-+    if score >= 90:
-+        return 4.0
-+    elif score >= 85:
++        raise ValueError("Invalid score")
+     if score >= 90:
+         return 4.0
++    if score >= 85:
 +        return 3.5
-+    elif score >= 80:
-+        return 3.0
-+    elif score >= 75:
+     if score >= 80:
+         return 3.0
++    if score >= 75:
 +        return 2.5
-+    elif score >= 70:
+     if score >= 70:
+-        return 1.5
 +        return 2.0
-+    elif score >= 60:
-+        return 1.0
-+    return 0.0
+     if score >= 60:
+         return 1.0
+     return 0.0

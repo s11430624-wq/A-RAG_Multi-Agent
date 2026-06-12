@@ -1,0 +1,22 @@
+--- a/student_system/src/student.py
++++ b/student_system/src/student.py
+@@ -16,3 +16,19 @@
+     if score < 0 or score > 100:
+         raise ValueError("Invalid Score")
+     get_student_by_id(student_id)
++
++def get_student_course_summary(student_id: str) -> dict:
++    from student_system.src import course, grade
++    get_student_by_id(student_id)
++    grades = grade.get_grades_by_student(student_id)
++    courses_summary = []
++    for g in grades:
++        c_info = course.get_course_by_id(g["course_id"])
++        courses_summary.append({
++            "course_id": g["course_id"],
++            "title": c_info["title"],
++            "credits": c_info["credits"],
++            "score": g["score"],
++            "gpa": g["gpa"]
++        })
++    return {"student_id": student_id, "courses": courses_summary}
