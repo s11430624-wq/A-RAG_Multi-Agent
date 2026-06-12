@@ -378,7 +378,7 @@ def _parse_usage(value, provider_id: str = "") -> tuple[Usage, tuple[tuple[str, 
         if isinstance(reasoning_tokens, bool) or not isinstance(reasoning_tokens, int) or reasoning_tokens < 0:
             raise ProviderMalformedResponseError("reasoning_tokens must be a non-negative integer")
 
-    is_hermes = provider_id == "hermes_vertex_gateway"
+    is_hermes = provider_id == "openai_compatible_gateway"
     
     if reasoning_tokens is not None and reasoning_tokens > 0:
         if is_hermes:
@@ -393,7 +393,7 @@ def _parse_usage(value, provider_id: str = "") -> tuple[Usage, tuple[tuple[str, 
                         source="provider_normalized"
                     )
                     audit_meta = (
-                        ("normalization_rule", "google_vertex_reasoning_accumulation"),
+                        ("normalization_rule", "openai_reasoning_accumulation"),
                         ("normalized_output_tokens", str(normalized_output)),
                         ("raw_completion_tokens", str(completion_tokens)),
                         ("reasoning_tokens", str(reasoning_tokens)),

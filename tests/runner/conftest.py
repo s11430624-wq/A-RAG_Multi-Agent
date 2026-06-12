@@ -22,11 +22,11 @@ def result_schema_path(project_root: Path) -> Path:
 @pytest.fixture
 def valid_result_record() -> dict:
     return {
-        "run_id": "exp-20260611-google-gemini-3-5-flash-seed42-r3__T01__A__rep01__seed42",
+        "run_id": "exp-20260611-GPT5.4-seed42-r3__T01__A__rep01__seed42",
         "task_id": "T01",
         "strategy": "A",
         "repetition": 1,
-        "model": "google/gemini-3.5-flash",
+        "model": "GPT5.4",
         "seed": 42,
         "valid_run": True,
         "pass1_public": True,
@@ -58,7 +58,7 @@ def valid_result_record() -> dict:
         "error_type": "none",
         "stop_reason": "public_pass",
         "manual_review_status": "pending",
-        "artifact_path": "exp-20260611-google-gemini-3-5-flash-seed42-r3__T01__A__rep01__seed42",
+        "artifact_path": "exp-20260611-GPT5.4-seed42-r3__T01__A__rep01__seed42",
     }
 
 

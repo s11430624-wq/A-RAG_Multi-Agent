@@ -26,14 +26,14 @@ def test_factory_fails_closed_on_live_without_env_flag(monkeypatch, tmp_path):
         unit_test_timeout_seconds=30.0,
         total_run_timeout_seconds=300.0,
         paths=paths,
-        model_provider_id="hermes_vertex_gateway",
-        model="google/gemini-3.5-flash",
+        model_provider_id="openai_compatible_gateway",
+        model="GPT5.4",
         mode="live",
         live_opt_in=False, # Set to False since no env flag
     )
     
     with pytest.raises(ValueError, match="Live mode is not approved by env"):
-        LiveProviderFactory.create_provider(config, model_id="google/gemini-3.5-flash", env={})
+        LiveProviderFactory.create_provider(config, model_id="GPT5.4", env={})
 
 
 def test_factory_loads_from_models_yaml_and_runtime_config(monkeypatch, tmp_path):
@@ -50,15 +50,15 @@ def test_factory_loads_from_models_yaml_and_runtime_config(monkeypatch, tmp_path
     
     # Write models.yaml
     models_content = {
-        "default_model": "google/gemini-3.5-flash",
-        "default_provider": "hermes_vertex_gateway",
+        "default_model": "GPT5.4",
+        "default_provider": "openai_compatible_gateway",
         "providers": {
-            "hermes_vertex_gateway": {
-                "name": "Hermes Vertex Gateway",
+            "openai_compatible_gateway": {
+                "name": "OpenAI Compatible Gateway",
                 "api_base": "http://127.0.0.1:8787/v1",
                 "models": [
                     {
-                        "id": "google/gemini-3.5-flash",
+                        "id": "GPT5.4",
                         "temperature": 0.123,
                         "max_output_tokens": 1024,
                         "top_p": 0.88,
@@ -89,8 +89,8 @@ def test_factory_loads_from_models_yaml_and_runtime_config(monkeypatch, tmp_path
         unit_test_timeout_seconds=30.0,
         total_run_timeout_seconds=300.0,
         paths=paths,
-        model_provider_id="hermes_vertex_gateway",
-        model="google/gemini-3.5-flash",
+        model_provider_id="openai_compatible_gateway",
+        model="GPT5.4",
         mode="live",
         live_opt_in=True,
     )
@@ -98,7 +98,7 @@ def test_factory_loads_from_models_yaml_and_runtime_config(monkeypatch, tmp_path
     # Case A: Fallback to models.yaml parsing (no explicit provider_runtime_config)
     provider_a = LiveProviderFactory.create_provider(
         config,
-        model_id="google/gemini-3.5-flash",
+        model_id="GPT5.4",
         env={"ARAG_RUN_LIVE_GATEWAY": "1"}
     )
     assert provider_a.config.api_base == "http://127.0.0.1:8787/v1"
@@ -109,13 +109,13 @@ def test_factory_loads_from_models_yaml_and_runtime_config(monkeypatch, tmp_path
     # Case B: Injecting explicit ProviderRuntimeConfig
     custom_caps = ProviderCapabilities(supports_seed=False, supports_request_id=False, returns_usage=True)
     custom_runtime_config = ProviderRuntimeConfig(
-        provider_id="hermes_vertex_gateway",
+        provider_id="openai_compatible_gateway",
         api_base="http://127.0.0.1:8787/v1",
         capabilities=custom_caps,
     )
     provider_b = LiveProviderFactory.create_provider(
         config,
-        model_id="google/gemini-3.5-flash",
+        model_id="GPT5.4",
         env={"ARAG_RUN_LIVE_GATEWAY": "1"},
         provider_runtime_config=custom_runtime_config,
     )
@@ -136,18 +136,18 @@ def test_factory_rejects_attacker_provider_overrides(monkeypatch, tmp_path):
     
     # Write models.yaml with two providers
     models_content = {
-        "default_model": "google/gemini-3.5-flash",
-        "default_provider": "hermes_vertex_gateway",
+        "default_model": "GPT5.4",
+        "default_provider": "openai_compatible_gateway",
         "providers": {
-            "hermes_vertex_gateway": {
-                "name": "Hermes Vertex Gateway",
+            "openai_compatible_gateway": {
+                "name": "OpenAI Compatible Gateway",
                 "api_base": "http://127.0.0.1:8787/v1",
-                "models": [{"id": "google/gemini-3.5-flash"}]
+                "models": [{"id": "GPT5.4"}]
             },
             "attacker_provider": {
                 "name": "Attacker Gateway",
                 "api_base": "https://malicious-attacker-endpoint/v1",
-                "models": [{"id": "google/gemini-3.5-flash"}]
+                "models": [{"id": "GPT5.4"}]
             }
         }
     }
@@ -172,8 +172,8 @@ def test_factory_rejects_attacker_provider_overrides(monkeypatch, tmp_path):
         unit_test_timeout_seconds=30.0,
         total_run_timeout_seconds=300.0,
         paths=paths,
-        model_provider_id="hermes_vertex_gateway",
-        model="google/gemini-3.5-flash",
+        model_provider_id="openai_compatible_gateway",
+        model="GPT5.4",
         mode="live",
         live_opt_in=True,
     )
@@ -189,21 +189,21 @@ def test_factory_rejects_attacker_provider_overrides(monkeypatch, tmp_path):
     with pytest.raises(ValueError, match="Runtime provider override mismatch"):
         LiveProviderFactory.create_provider(
             config,
-            model_id="google/gemini-3.5-flash",
+            model_id="GPT5.4",
             env={"ARAG_RUN_LIVE_GATEWAY": "1"},
             provider_runtime_config=mismatched_runtime_config,
         )
         
     # 2. Reject api_base mixing with another provider's endpoint in models.yaml
     mixed_endpoint_config = ProviderRuntimeConfig(
-        provider_id="hermes_vertex_gateway", # Matches config.model_provider_id
+        provider_id="openai_compatible_gateway", # Matches config.model_provider_id
         api_base="https://malicious-attacker-endpoint/v1", # Mapped to attacker_provider in models.yaml!
         capabilities=custom_caps,
     )
     with pytest.raises(ValueError, match="Runtime endpoint override mixes provider endpoint"):
         LiveProviderFactory.create_provider(
             config,
-            model_id="google/gemini-3.5-flash",
+            model_id="GPT5.4",
             env={"ARAG_RUN_LIVE_GATEWAY": "1"},
             provider_runtime_config=mixed_endpoint_config,
         )

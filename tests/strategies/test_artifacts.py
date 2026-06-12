@@ -116,14 +116,14 @@ def test_finalize_is_write_once_and_close_preserves_finalized_bundle(tmp_path: P
 
 def test_manifest_includes_usage_audit_metadata_in_call_records(tmp_path: Path):
     root = tmp_path / "approved"
-    writer = ArtifactBundleWriter(root, run_id="run-norm", task_id="T01", strategy="C", model="google/gemini-3.5-flash", provider_id="hermes_vertex_gateway", seed=42)
+    writer = ArtifactBundleWriter(root, run_id="run-norm", task_id="T01", strategy="C", model="GPT5.4", provider_id="openai_compatible_gateway", seed=42)
     
     # We must ensure run_root directory is created since normally stage_bytes creates it
     writer.run_root.mkdir(parents=True, exist_ok=True)
     
     # 1. Simulate a normalized provider call response
     audit_meta = (
-        ("normalization_rule", "google_vertex_reasoning_accumulation"),
+        ("normalization_rule", "openai_reasoning_accumulation"),
         ("normalized_output_tokens", "94"),
         ("raw_completion_tokens", "1"),
         ("reasoning_tokens", "93"),
@@ -154,7 +154,7 @@ def test_manifest_includes_usage_audit_metadata_in_call_records(tmp_path: Path):
     assert record["input_tokens"] == 8
     assert record["output_tokens"] == 94
     assert record["audit_metadata"] == [
-        ["normalization_rule", "google_vertex_reasoning_accumulation"],
+        ["normalization_rule", "openai_reasoning_accumulation"],
         ["normalized_output_tokens", "94"],
         ["raw_completion_tokens", "1"],
         ["reasoning_tokens", "93"],

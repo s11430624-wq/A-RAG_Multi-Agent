@@ -296,15 +296,15 @@ def test_provider_parses_reasoning_tokens_into_normalized_output_tokens():
         }
     }
     
-    # 1. Direct parser check on hermes_vertex_gateway
-    usage, meta = _parse_usage(raw_usage, "hermes_vertex_gateway")
+    # 1. Direct parser check on openai_compatible_gateway
+    usage, meta = _parse_usage(raw_usage, "openai_compatible_gateway")
     assert usage.input_tokens == 8
     assert usage.output_tokens == 94
     assert usage.total_tokens == 102
     assert usage.source == "provider_normalized"
     
     meta_dict = dict(meta)
-    assert meta_dict["normalization_rule"] == "google_vertex_reasoning_accumulation"
+    assert meta_dict["normalization_rule"] == "openai_reasoning_accumulation"
     assert meta_dict["raw_completion_tokens"] == "1"
     assert meta_dict["reasoning_tokens"] == "93"
     assert meta_dict["normalized_output_tokens"] == "94"
@@ -321,7 +321,7 @@ def test_provider_rejects_malformed_reasoning_tokens():
         }
     }
     with pytest.raises(ProviderMalformedResponseError, match="reasoning_tokens must be a non-negative integer"):
-        _parse_usage(raw_usage, "hermes_vertex_gateway")
+        _parse_usage(raw_usage, "openai_compatible_gateway")
 
 
 def test_provider_rejects_negative_reasoning_tokens():
@@ -334,7 +334,7 @@ def test_provider_rejects_negative_reasoning_tokens():
         }
     }
     with pytest.raises(ProviderMalformedResponseError, match="reasoning_tokens must be a non-negative integer"):
-        _parse_usage(raw_usage, "hermes_vertex_gateway")
+        _parse_usage(raw_usage, "openai_compatible_gateway")
 
 
 def test_provider_rejects_mismatch_when_reasoning_tokens_absent():
@@ -345,7 +345,7 @@ def test_provider_rejects_mismatch_when_reasoning_tokens_absent():
     }
     # For a non-hermes provider, or even hermes when reasoning is absent, mismatch raises:
     with pytest.raises(ProviderMalformedResponseError, match="total_tokens must equal input_tokens \\+ output_tokens"):
-        _parse_usage(raw_usage, "hermes_vertex_gateway")
+        _parse_usage(raw_usage, "openai_compatible_gateway")
 
 
 def test_provider_does_not_normalize_non_hermes_provider():

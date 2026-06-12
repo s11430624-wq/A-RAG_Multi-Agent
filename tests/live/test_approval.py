@@ -76,7 +76,7 @@ def create_smoke_gate_mock_workspace(
             "input_tokens": 100,
             "output_tokens": 50,
             "tool_calls": 0,
-            "model": "google/gemini-3.5-flash",
+            "model": "GPT5.4",
             "seed": 42
         },
         {
@@ -89,7 +89,7 @@ def create_smoke_gate_mock_workspace(
             "input_tokens": 150,
             "output_tokens": 70,
             "tool_calls": 0,
-            "model": "google/gemini-3.5-flash",
+            "model": "GPT5.4",
             "seed": 42
         },
         {
@@ -102,7 +102,7 @@ def create_smoke_gate_mock_workspace(
             "input_tokens": 200,
             "output_tokens": 90,
             "tool_calls": 2,
-            "model": "google/gemini-3.5-flash",
+            "model": "GPT5.4",
             "seed": 42
         }
     ]
@@ -140,8 +140,8 @@ def create_smoke_gate_mock_workspace(
             "run_id": run_id,
             "task_id": "T01",
             "strategy": strat,
-            "model": "google/gemini-3.5-flash",
-            "provider_id": "hermes_vertex_gateway",
+            "model": "GPT5.4",
+            "provider_id": "openai_compatible_gateway",
             "seed": 42,
             "usage_complete": True,
             "failed_provider_call_count": 0,

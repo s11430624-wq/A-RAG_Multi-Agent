@@ -133,7 +133,7 @@ class ScriptedSender:
 def _response(status: int = 200) -> TransportResponse:
     body = {
         "id": "offline",
-        "model": "google/gemini-3.5-flash",
+        "model": "GPT5.4",
         "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
         "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
     }
@@ -147,10 +147,10 @@ def test_live_smoke_composition_builds_three_independent_run_providers(tmp_path)
     assert [run.identity.strategy for run in composition.runs] == ["A", "C", "E"]
     assert len({id(provider) for provider in composition.providers}) == 3
     assert {provider.config.provider_id for provider in composition.providers} == {
-        "hermes_vertex_gateway"
+        "openai_compatible_gateway"
     }
     assert {provider.config.parameters.model for provider in composition.providers} == {
-        "google/gemini-3.5-flash"
+        "GPT5.4"
     }
     assert {provider.config.parameters.seed for provider in composition.providers} == {42}
     assert all(provider.transport.no_auth_loopback for provider in composition.providers)
@@ -306,8 +306,8 @@ def test_cli_script_entrypoint_validates_composition_and_returns_code_2(tmp_path
         ("http://127.0.0.1:8787/v1", "http://localhost:8787/v1"),
         ("http://127.0.0.1:8787/v1", "http://127.0.0.1:8788/v1"),
         ("http://127.0.0.1:8787/v1", "https://example.trycloudflare.com/v1"),
-        ("hermes_vertex_gateway", "other_provider"),
-        ("google/gemini-3.5-flash", "other/model"),
+        ("openai_compatible_gateway", "other_provider"),
+        ("GPT5.4", "other/model"),
     ],
 )
 def test_composition_rejects_models_yaml_mismatch(
@@ -371,7 +371,7 @@ def test_composition_rejects_provider_runtime_override(tmp_path):
         env=LIVE_ENV,
     ).config
     runtime_override = ProviderRuntimeConfig(
-        provider_id="hermes_vertex_gateway",
+        provider_id="openai_compatible_gateway",
         api_base="http://127.0.0.1:8787/v1",
         capabilities=ProviderCapabilities(True, True, True),
     )

@@ -26,7 +26,7 @@ def valid_result_data():
       "task_id": "T01",
       "strategy": "E",
       "repetition": 1,
-      "model": "google/gemini-3.5-flash",
+      "model": "GPT5.4",
       "seed": 42,
       "valid_run": True,
       "pass1_public": False,

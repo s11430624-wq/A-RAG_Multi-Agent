@@ -23,7 +23,7 @@ def test_probe_succeeds_under_ideal_conditions():
         finish_reason="stop",
         usage=Usage(input_tokens=10, output_tokens=5, total_tokens=15, source="provider"),
         provider_request_id="req-123",
-        model="google/gemini-3.5-flash",
+        model="GPT5.4",
         latency_seconds=1.2,
         retry_count=0,
         seed_applied=True,
@@ -34,7 +34,7 @@ def test_probe_succeeds_under_ideal_conditions():
     probe = GatewayProbe(provider, supports_request_id=True, supports_seed=True)
     
     # Must run without errors
-    probe.run_probe(model="google/gemini-3.5-flash")
+    probe.run_probe(model="GPT5.4")
     assert provider.calls == 1
 
 
@@ -44,7 +44,7 @@ def test_probe_fails_on_model_identity_mismatch():
         finish_reason="stop",
         usage=Usage(input_tokens=10, output_tokens=5, total_tokens=15, source="provider"),
         provider_request_id="req-123",
-        model="google/gemini-3.5-flash-wrong",
+        model="GPT5.4-wrong",
         latency_seconds=1.2,
         retry_count=0,
         seed_applied=True,
@@ -55,7 +55,7 @@ def test_probe_fails_on_model_identity_mismatch():
     probe = GatewayProbe(provider, supports_request_id=True, supports_seed=True)
     
     with pytest.raises(ValueError, match="Model identity mismatch"):
-        probe.run_probe(model="google/gemini-3.5-flash")
+        probe.run_probe(model="GPT5.4")
 
 
 def test_probe_fails_on_inconsistent_token_usage():
@@ -65,7 +65,7 @@ def test_probe_fails_on_inconsistent_token_usage():
         finish_reason="stop",
         usage=Usage(input_tokens=None, output_tokens=None, total_tokens=None, source="missing"),
         provider_request_id="req-123",
-        model="google/gemini-3.5-flash",
+        model="GPT5.4",
         latency_seconds=1.2,
         retry_count=0,
         seed_applied=True,
@@ -75,7 +75,7 @@ def test_probe_fails_on_inconsistent_token_usage():
     provider_missing = FakeProvider(resp_missing)
     probe_missing = GatewayProbe(provider_missing, supports_request_id=True, supports_seed=True)
     with pytest.raises(ValueError, match="Token usage is incomplete or missing"):
-        probe_missing.run_probe(model="google/gemini-3.5-flash")
+        probe_missing.run_probe(model="GPT5.4")
 
 
 def test_probe_fails_if_request_id_missing_and_supported():
@@ -84,7 +84,7 @@ def test_probe_fails_if_request_id_missing_and_supported():
         finish_reason="stop",
         usage=Usage(input_tokens=10, output_tokens=5, total_tokens=15, source="provider"),
         provider_request_id=None, # Missing!
-        model="google/gemini-3.5-flash",
+        model="GPT5.4",
         latency_seconds=1.2,
         retry_count=0,
         seed_applied=True,
@@ -94,7 +94,7 @@ def test_probe_fails_if_request_id_missing_and_supported():
     provider = FakeProvider(resp)
     probe = GatewayProbe(provider, supports_request_id=True, supports_seed=True)
     with pytest.raises(ValueError, match="Request ID is missing"):
-        probe.run_probe(model="google/gemini-3.5-flash")
+        probe.run_probe(model="GPT5.4")
 
 
 def test_probe_fails_if_seed_not_applied_and_supported():
@@ -103,7 +103,7 @@ def test_probe_fails_if_seed_not_applied_and_supported():
         finish_reason="stop",
         usage=Usage(input_tokens=10, output_tokens=5, total_tokens=15, source="provider"),
         provider_request_id="req-123",
-        model="google/gemini-3.5-flash",
+        model="GPT5.4",
         latency_seconds=1.2,
         retry_count=0,
         seed_applied=False, # Seed not applied!
@@ -113,7 +113,7 @@ def test_probe_fails_if_seed_not_applied_and_supported():
     provider = FakeProvider(resp)
     probe = GatewayProbe(provider, supports_request_id=True, supports_seed=True)
     with pytest.raises(ValueError, match="Seed applied check failed"):
-        probe.run_probe(model="google/gemini-3.5-flash")
+        probe.run_probe(model="GPT5.4")
 
 
 def test_live_gateway_single_probe_requires_opt_in():
@@ -126,13 +126,13 @@ def _setup_tmp_env(tmp_path):
     configs_dir.mkdir(parents=True, exist_ok=True)
     models_yaml = configs_dir / "models.yaml"
     models_yaml.write_text("""
-default_model: "google/gemini-3.5-flash"
-default_provider: "hermes_vertex_gateway"
+default_model: "GPT5.4"
+default_provider: "openai_compatible_gateway"
 providers:
-  hermes_vertex_gateway:
+  openai_compatible_gateway:
     api_base: "http://127.0.0.1:8787/v1"
     models:
-      - id: "google/gemini-3.5-flash"
+      - id: "GPT5.4"
         temperature: 0.0
         top_p: 0.95
         max_output_tokens: 100
@@ -149,7 +149,7 @@ timeout:
   agent_response: 240
   unit_test: 30
   total_run: 600
-model_provider_id: "hermes_vertex_gateway"
+model_provider_id: "openai_compatible_gateway"
 paths:
   tasks_definition: "experiments/tasks.json"
   raw_results_dir: "results"
@@ -168,11 +168,11 @@ def test_run_live_probe_cli_accepts_provider_normalized_usage(tmp_path, monkeypa
     from experiments.providers.openai_compatible import OpenAICompatibleProvider
     from experiments.providers.models import ProviderConfig, ModelParameters, ProviderCapabilities
     
-    # Configure the Provider to use "hermes_vertex_gateway" so it allows reasoning token normalization
+    # Configure the Provider to use "openai_compatible_gateway" so it allows reasoning token normalization
     config = ProviderConfig(
-        "hermes_vertex_gateway",
+        "openai_compatible_gateway",
         "http://127.0.0.1:8787/v1",
-        ModelParameters("google/gemini-3.5-flash", 0.0, 0.95, 100, 30.0, 42),
+        ModelParameters("GPT5.4", 0.0, 0.95, 100, 30.0, 42),
         ProviderCapabilities(True, True, True),
         3,
         (0.25, 0.5),
@@ -181,10 +181,10 @@ def test_run_live_probe_cli_accepts_provider_normalized_usage(tmp_path, monkeypa
     mock_transport = MagicMock()
     mock_transport.no_auth_loopback = True
     
-    # Let the mock transport return raw Gemini 3.5 response
+    # Let the mock transport return raw GPT5.4 response
     response_body = {
         "id": "fV8qauqHLY6R9tMPg-uF4QY",
-        "model": "google/gemini-3.5-flash",
+        "model": "GPT5.4",
         "choices": [
             {
                 "finish_reason": "stop",
@@ -254,9 +254,9 @@ def test_run_live_probe_cli_rejects_normalized_usage_missing_metadata(tmp_path, 
     from experiments.providers.models import ProviderConfig, ModelParameters, ProviderCapabilities
     
     config = ProviderConfig(
-        "hermes_vertex_gateway",
+        "openai_compatible_gateway",
         "http://127.0.0.1:8787/v1",
-        ModelParameters("google/gemini-3.5-flash", 0.0, 0.95, 100, 30.0, 42),
+        ModelParameters("GPT5.4", 0.0, 0.95, 100, 30.0, 42),
         ProviderCapabilities(True, True, True),
         3,
         (0.25, 0.5),
@@ -268,7 +268,7 @@ def test_run_live_probe_cli_rejects_normalized_usage_missing_metadata(tmp_path, 
     # Raw usage structure but without completion_tokens_details -> standard parsing -> mismatched 8+1 != 102
     response_body = {
         "id": "fV8qauqHLY6R9tMPg-uF4QY",
-        "model": "google/gemini-3.5-flash",
+        "model": "GPT5.4",
         "choices": [
             {
                 "finish_reason": "stop",
@@ -311,7 +311,7 @@ def test_gateway_probe_validate_response_does_not_call_provider():
         finish_reason="stop",
         usage=Usage(input_tokens=10, output_tokens=5, total_tokens=15, source="provider"),
         provider_request_id="req-123",
-        model="google/gemini-3.5-flash",
+        model="GPT5.4",
         latency_seconds=1.2,
         retry_count=0,
         seed_applied=True,
@@ -322,7 +322,7 @@ def test_gateway_probe_validate_response_does_not_call_provider():
     probe = GatewayProbe(provider, supports_request_id=True, supports_seed=True)
     
     # Executing validate_response must not trigger generate/network call at all
-    probe.validate_response(resp, "google/gemini-3.5-flash")
+    probe.validate_response(resp, "GPT5.4")
     assert provider.calls == 0
 
 
@@ -332,7 +332,7 @@ def test_gateway_probe_run_probe_returns_response():
         finish_reason="stop",
         usage=Usage(input_tokens=10, output_tokens=5, total_tokens=15, source="provider"),
         provider_request_id="req-123",
-        model="google/gemini-3.5-flash",
+        model="GPT5.4",
         latency_seconds=1.2,
         retry_count=0,
         seed_applied=True,
@@ -343,6 +343,6 @@ def test_gateway_probe_run_probe_returns_response():
     probe = GatewayProbe(provider, supports_request_id=True, supports_seed=True)
     
     # Executing run_probe must validate and return the ModelResponse object
-    ret_resp = probe.run_probe("google/gemini-3.5-flash")
+    ret_resp = probe.run_probe("GPT5.4")
     assert ret_resp is resp
     assert provider.calls == 1

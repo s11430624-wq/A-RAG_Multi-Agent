@@ -170,22 +170,22 @@ def test_no_auth_loopback_rejects_localhost():
         unit_test_timeout_seconds=30.0,
         total_run_timeout_seconds=300.0,
         paths=paths,
-        model_provider_id="hermes_vertex_gateway",
-        model="google/gemini-3.5-flash",
+        model_provider_id="openai_compatible_gateway",
+        model="GPT5.4",
         mode="live",
         live_opt_in=True,
     )
     
     custom_caps = ProviderCapabilities(supports_seed=True, supports_request_id=True, returns_usage=True)
     custom_runtime_config = ProviderRuntimeConfig(
-        provider_id="hermes_vertex_gateway",
+        provider_id="openai_compatible_gateway",
         api_base="http://localhost:8787/v1",
         capabilities=custom_caps,
     )
     with pytest.raises(ValueError, match="Runtime override contains unapproved endpoint"):
         LiveProviderFactory.create_provider(
             config,
-            model_id="google/gemini-3.5-flash",
+            model_id="GPT5.4",
             env={"ARAG_RUN_LIVE_GATEWAY": "1"},
             provider_runtime_config=custom_runtime_config,
         )
@@ -220,22 +220,22 @@ def test_no_auth_loopback_rejects_wrong_port_8000():
         unit_test_timeout_seconds=30.0,
         total_run_timeout_seconds=300.0,
         paths=paths,
-        model_provider_id="hermes_vertex_gateway",
-        model="google/gemini-3.5-flash",
+        model_provider_id="openai_compatible_gateway",
+        model="GPT5.4",
         mode="live",
         live_opt_in=True,
     )
     
     custom_caps = ProviderCapabilities(supports_seed=True, supports_request_id=True, returns_usage=True)
     custom_runtime_config = ProviderRuntimeConfig(
-        provider_id="hermes_vertex_gateway",
+        provider_id="openai_compatible_gateway",
         api_base="http://127.0.0.1:8000/v1",
         capabilities=custom_caps,
     )
     with pytest.raises(ValueError, match="Runtime override contains unapproved endpoint"):
         LiveProviderFactory.create_provider(
             config,
-            model_id="google/gemini-3.5-flash",
+            model_id="GPT5.4",
             env={"ARAG_RUN_LIVE_GATEWAY": "1"},
             provider_runtime_config=custom_runtime_config,
         )
@@ -270,22 +270,22 @@ def test_no_auth_loopback_rejects_shared_proxy_8788():
         unit_test_timeout_seconds=30.0,
         total_run_timeout_seconds=300.0,
         paths=paths,
-        model_provider_id="hermes_vertex_gateway",
-        model="google/gemini-3.5-flash",
+        model_provider_id="openai_compatible_gateway",
+        model="GPT5.4",
         mode="live",
         live_opt_in=True,
     )
     
     custom_caps = ProviderCapabilities(supports_seed=True, supports_request_id=True, returns_usage=True)
     custom_runtime_config = ProviderRuntimeConfig(
-        provider_id="hermes_vertex_gateway",
+        provider_id="openai_compatible_gateway",
         api_base="http://127.0.0.1:8788/v1",
         capabilities=custom_caps,
     )
     with pytest.raises(ValueError, match="Runtime override contains unapproved endpoint"):
         LiveProviderFactory.create_provider(
             config,
-            model_id="google/gemini-3.5-flash",
+            model_id="GPT5.4",
             env={"ARAG_RUN_LIVE_GATEWAY": "1"},
             provider_runtime_config=custom_runtime_config,
         )
@@ -321,22 +321,22 @@ def test_no_auth_loopback_rejects_trycloudflare():
         unit_test_timeout_seconds=30.0,
         total_run_timeout_seconds=300.0,
         paths=paths,
-        model_provider_id="hermes_vertex_gateway",
-        model="google/gemini-3.5-flash",
+        model_provider_id="openai_compatible_gateway",
+        model="GPT5.4",
         mode="live",
         live_opt_in=True,
     )
     
     custom_caps = ProviderCapabilities(supports_seed=True, supports_request_id=True, returns_usage=True)
     custom_runtime_config = ProviderRuntimeConfig(
-        provider_id="hermes_vertex_gateway",
+        provider_id="openai_compatible_gateway",
         api_base="https://my-subdomain.trycloudflare.com/v1",
         capabilities=custom_caps,
     )
     with pytest.raises(ValueError, match="Runtime override contains unapproved endpoint"):
         LiveProviderFactory.create_provider(
             config,
-            model_id="google/gemini-3.5-flash",
+            model_id="GPT5.4",
             env={"ARAG_RUN_LIVE_GATEWAY": "1"},
             provider_runtime_config=custom_runtime_config,
         )
@@ -368,15 +368,15 @@ def test_factory_uses_models_yaml_127_0_0_1_8787(monkeypatch, tmp_path):
         unit_test_timeout_seconds=30.0,
         total_run_timeout_seconds=300.0,
         paths=paths,
-        model_provider_id="hermes_vertex_gateway",
-        model="google/gemini-3.5-flash",
+        model_provider_id="openai_compatible_gateway",
+        model="GPT5.4",
         mode="live",
         live_opt_in=True,
     )
     
     provider = LiveProviderFactory.create_provider(
         config,
-        model_id="google/gemini-3.5-flash",
+        model_id="GPT5.4",
         env={"ARAG_RUN_LIVE_GATEWAY": "1"}
     )
     assert provider.config.api_base == "http://127.0.0.1:8787/v1"
@@ -408,8 +408,8 @@ def test_factory_ignores_hermes_gateway_api_key_env(monkeypatch, tmp_path):
         unit_test_timeout_seconds=30.0,
         total_run_timeout_seconds=300.0,
         paths=paths,
-        model_provider_id="hermes_vertex_gateway",
-        model="google/gemini-3.5-flash",
+        model_provider_id="openai_compatible_gateway",
+        model="GPT5.4",
         mode="live",
         live_opt_in=True,
     )
@@ -417,7 +417,7 @@ def test_factory_ignores_hermes_gateway_api_key_env(monkeypatch, tmp_path):
     # Even with HERMES_GATEWAY_API_KEY set, it should build successfully and set no_auth_loopback=True, meaning it ignores the key.
     provider = LiveProviderFactory.create_provider(
         config,
-        model_id="google/gemini-3.5-flash",
+        model_id="GPT5.4",
         env={"ARAG_RUN_LIVE_GATEWAY": "1", "HERMES_GATEWAY_API_KEY": "toxic_key"}
     )
     assert provider.transport.no_auth_loopback is True

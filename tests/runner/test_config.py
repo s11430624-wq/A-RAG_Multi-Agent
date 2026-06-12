@@ -20,8 +20,8 @@ def test_loads_existing_configs_into_frozen_experiment_config(project_root):
     assert config.repetitions == 3
     assert config.max_repair_rounds == 2
     assert config.seed == 42
-    assert config.model == "google/gemini-3.5-flash"
-    assert config.model_provider_id == "hermes_vertex_gateway"
+    assert config.model == "GPT5.4"
+    assert config.model_provider_id == "openai_compatible_gateway"
     assert config.mode == "mock_run"
     assert config.live_opt_in is False
     assert config.paths.artifact_root == config.paths.raw_results_dir / "artifacts"

@@ -32,7 +32,7 @@ from experiments.strategies.multi_agent import MultiAgentStrategySession
 from experiments.strategies.single_llm import SingleLLMStrategySession
 
 
-MODEL = "google/gemini-3.5-flash"
+MODEL = "GPT5.4"
 EXPERIMENT_ID = "m7d_smoke_20260611T120000Z"
 PLAN = json.dumps(
     {
@@ -407,7 +407,7 @@ def test_executor_exercises_production_pipeline_for_a_c_e(tmp_path, monkeypatch)
         assert current_bytes == finalized_bytes
         assert hashlib.sha256(current_bytes).hexdigest() == expected_sha256
         manifest = json.loads(current_bytes)
-        assert manifest["provider_id"] == "hermes_vertex_gateway"
+        assert manifest["provider_id"] == "openai_compatible_gateway"
         for call_record in manifest["call_records"]:
             assert dict(call_record["audit_metadata"]) == {
                 "normalization_rule": "raw_plus_reasoning",

@@ -2,7 +2,7 @@
 
 ## 0. 一句話目標
 
-建立一個小型學生資訊管理系統，設計 5 題 coding tasks，分別用 **Single LLM**、**Multi-Agent**、**Multi-Agent + A-RAG** 三種方法解題，並比較 A-RAG 是否能降低 API 幻覺、提升測試通過率與需求符合度。
+建立一個小型學生資訊管理系統，設計 5 題 coding tasks，分別用 **Single LLM**、**Multi-Agent**、**Multi-Agent + A-RAG** 三種方法解題，並比較 A-RAG 是否能降低幻覺、提升測試通過率與需求符合度。
 
 ---
 
@@ -11,6 +11,15 @@
 **Retrieval-Augmented Multi-Agent Coding System**
 
 本研究目標是將 **A-RAG 的階層式檢索能力** 整合進 **Planner–Coder–Reviewer 多 Agent 程式開發流程**，驗證其是否能比單一 LLM 或未整合檢索的多 Agent 架構產生更正確、更符合專案規範且更容易維護的程式碼。
+
+### 1.1 研究問題（Research Questions）
+
+| 代號 | 研究問題 | 主要比較 |
+|---|---|---|
+| RQ1 | A-RAG 是否能降低 coding agent 在函式、模組、參數與專案規範上的幻覺情況？ | Multi-Agent vs Multi-Agent + A-RAG |
+| RQ2 | A-RAG 是否能提升多 Agent coding system 在需求符合度與測試通過率上的表現？ | Single LLM / Multi-Agent / Multi-Agent + A-RAG |
+| RQ3 | Agentic retrieval 是否比固定 top-k 的 Naive RAG 更適合需要查多份文件、舊程式碼與測試案例的程式任務？ | Multi-Agent + Naive RAG vs Multi-Agent + A-RAG |
+| RQ4 | 整合 A-RAG 後的代價是什麼？例如延遲、tool calls、token cost 是否明顯增加？ | 效能與成本比較 |
 
 ---
 
@@ -42,7 +51,14 @@
 | 比較組別 | Single LLM、Multi-Agent、Multi-Agent + A-RAG |
 | 檢索方式 | 規則版 A-RAG，不先做完整 tool-calling |
 | 評估方式 | pytest + 人工評分 |
-| 主要指標 | Pass@1、Final Pass、API Correctness、Hallucinated API Rate、Code Quality、Latency |
+| 主要指標 | Pass@1、Final Pass、Interface Correctness、幻覺率、Code Quality、Latency |
+
+### 3.1 完整版與 MVP 的差異
+
+| 層級 | 建議範圍 | 用途 |
+|---|---|---|
+| MVP 版 | 5 題任務、A / C / E 三組 | 先確認系統跑得通，能做出初步比較 |
+| 完整版 | 5–10 題任務、A / B / C / D / E 五組 | 補足 Naive RAG 對照組與更完整的實驗矩陣 |
 
 ---
 
@@ -65,7 +81,7 @@ Coder Agent
   - 根據需求與檢索內容產生或修改程式碼
         ↓
 Reviewer Agent
-  - 檢查 API 是否存在
+  - 檢查函式與模組是否存在
   - 檢查是否符合需求與 coding style
   - 檢查可讀性、重複程式碼與潛在 bug
         ↓
@@ -121,7 +137,7 @@ A-RAG 要能查的資料如下：
 | 文件 / 資料 | 內容 | 用途 |
 |---|---|---|
 | `README.md` | 學生資訊管理系統的功能說明 | 讓 Planner 理解系統背景 |
-| `API_SPEC.md` | 既有函式名稱、參數、回傳值與使用限制 | 避免 Coder 捏造 API |
+| `API_SPEC.md` | 既有函式名稱、參數、回傳值與使用限制 | 避免 Coder 捏造不存在的函式或模組 |
 | `STYLE_GUIDE.md` | 命名規則、錯誤處理、註解規範、回傳格式 | 讓 Reviewer 檢查可維護性 |
 | `ISSUES.md` | bug 描述、需求變更、維護任務 | 設計 bug fix / maintenance task |
 | `src/*.py` | 既有程式碼 | 讓 Coder 查舊程式碼並延伸功能 |
@@ -136,10 +152,21 @@ A-RAG 要能查的資料如下：
 | Task ID | 類型 | 任務目標 | 需要查的依據 |
 |---|---|---|---|
 | T01 | Code Generation | 新增 `calculate_pass_rate(course_id)` | `API_SPEC.md`、`grade.py`、`course.py` |
-| T02 | Code Generation / API Usage | 新增學生修課查詢功能，不可直接讀 raw data | `API_SPEC.md`、`student.py`、`course.py` |
+| T02 | Code Generation / Interface Usage | 新增學生修課查詢功能，不可直接讀 raw data | `API_SPEC.md`、`student.py`、`course.py` |
 | T03 | Bug Fix | 修正 GPA 計算錯誤 | `ISSUES.md`、`grade.py`、`tests/test_grade.py` |
 | T04 | Bug Fix | 修正分數邊界處理錯誤，例如 0、100、負數、大於 100 | `ISSUES.md`、`utils.py`、`tests/test_grade.py` |
 | T05 | Refactoring | 將重複的成績驗證邏輯抽成 `validate_score()` | `student.py`、`grade.py`、`STYLE_GUIDE.md` |
+
+### 7.1 完整版任務數建議
+
+若後續時間足夠，可擴充為 **10 題** 任務，類型分配如下：
+
+| 任務類型 | 題數 | 目的 |
+|---|---:|---|
+| Code Generation | 3 | 測試從需求與規格產生新功能 |
+| Bug Fix | 3 | 測試根據 issue 與測試輸出修正錯誤 |
+| Refactoring | 2 | 測試跨檔案重構與重複邏輯抽取 |
+| Interface Usage | 2 | 測試是否能正確遵守既有函式與模組契約 |
 
 ### 每題任務格式
 
@@ -153,7 +180,7 @@ A-RAG 要能查的資料如下：
   "required_evidence": ["API_SPEC.md", "src/grade.py", "src/course.py"],
   "expected_behavior": "使用既有 get_students_by_course(course_id) 取得學生名單，回傳 0 到 1 之間的 float。",
   "unit_tests": ["tests/test_grade.py"],
-  "grading_notes": "不可捏造 API；必須符合 STYLE_GUIDE 的錯誤處理規範。"
+  "grading_notes": "不可捏造不存在的函式或模組；必須符合 STYLE_GUIDE 的錯誤處理規範。"
 }
 ```
 
@@ -176,13 +203,23 @@ A-RAG 要能查的資料如下：
 | B | Single LLM + Naive RAG | 固定 semantic search top-k 後讓 LLM 寫 code |
 | D | Multi-Agent + Naive RAG | 每個任務固定取 top-k 文件交給 Agent |
 
+### 8.1 五組完整版建議
+
+| 組別 | 方法 | 說明 | 對應研究問題 |
+|---|---|---|---|
+| A | Single LLM | 無檢索、無多 Agent | 最低 baseline |
+| B | Single LLM + Naive RAG | 固定 top-k 文件後直接解題 | 單模型加入檢索是否有幫助 |
+| C | Multi-Agent | Planner → Coder → Reviewer，但不查專案文件 | 多 Agent 流程本身是否有效 |
+| D | Multi-Agent + Naive RAG | 固定 top-k 文件交給多 Agent | 固定檢索 + 多 Agent 效果 |
+| E | Multi-Agent + A-RAG | Agent 可主動使用 keyword_search / semantic_search / chunk_read | 完整整合方法 |
+
 ---
 
 ## 9. A-RAG 第一版工具設計
 
 ### 9.1 `keyword_search(query)`
 
-用途：查明確 API 名稱、函式名稱、錯誤訊息、檔名。
+用途：查明確函式名稱、介面名稱、錯誤訊息、檔名。
 
 第一版可用簡單字串比對。
 
@@ -225,10 +262,10 @@ def chunk_read(file_path: str, chunk_id: str) -> str:
 
 | 情況 | 工具策略 |
 |---|---|
-| 題目提到明確 API 名稱或函式名稱 | 先 `keyword_search`，再 `chunk_read` |
-| 題目是語意需求，例如「新增及格率統計」 | 先 `semantic_search` 找相關 API 與舊程式碼 |
+| 題目提到明確函式名稱或介面名稱 | 先 `keyword_search`，再 `chunk_read` |
+| 題目是語意需求，例如「新增及格率統計」 | 先 `semantic_search` 找相關函式規格與舊程式碼 |
 | 題目需要修改多個檔案 | `semantic_search` 找候選檔案，`chunk_read` 讀完整片段 |
-| 檢索不到明確依據 | 要求模型說明不確定，不可捏造 API |
+| 檢索不到明確依據 | 要求模型說明不確定，不可捏造不存在的函式或模組 |
 
 ---
 
@@ -240,7 +277,7 @@ def chunk_read(file_path: str, chunk_id: str) -> str:
 
 - 分析 coding task
 - 拆解實作步驟
-- 判斷需要查哪些文件、API 或既有程式碼
+- 判斷需要查哪些文件、函式規格或既有程式碼
 - 輸出 implementation plan
 
 輸出格式：
@@ -261,7 +298,7 @@ def chunk_read(file_path: str, chunk_id: str) -> str:
 3. ...
 
 ### Risk Points
-- 可能誤用 API
+- 可能誤用既有函式或模組
 - 需要確認回傳格式
 ```
 
@@ -270,7 +307,7 @@ def chunk_read(file_path: str, chunk_id: str) -> str:
 職責：
 
 - 根據 Planner 的步驟與 retrieved evidence 實作程式碼
-- 優先使用專案中已存在的 API
+- 優先使用專案中已存在的函式、模組與規格
 - 不可自行創造不存在的函式或模組
 
 輸出格式：
@@ -295,7 +332,7 @@ def chunk_read(file_path: str, chunk_id: str) -> str:
 職責：
 
 - 檢查是否符合需求
-- 檢查是否使用不存在 API
+- 檢查是否使用不存在的函式或模組
 - 檢查是否符合 STYLE_GUIDE
 - 檢查可讀性、重複程式碼與潛在 bug
 
@@ -307,7 +344,7 @@ def chunk_read(file_path: str, chunk_id: str) -> str:
 ### Requirement Check
 Pass / Fail
 
-### API Correctness
+### Interface Correctness
 Pass / Fail
 
 ### Style Check
@@ -332,7 +369,7 @@ Pass / Fail
 限制：
 - 請只輸出需要新增或修改的程式碼。
 - 請簡短說明設計理由。
-- 如果不確定專案中是否存在某個 API，請明確說明不確定，不要捏造。
+- 如果不確定專案中是否存在某個函式或模組，請明確說明不確定，不要捏造。
 ```
 
 ### 12.2 Planner Prompt
@@ -375,7 +412,7 @@ Retrieved Evidence：
 {retrieved_chunks}
 
 限制：
-- 只能使用 evidence 中存在的 API。
+- 只能使用 evidence 中存在的函式、模組與規格。
 - 不可捏造不存在的函式、參數或模組。
 - 程式碼需符合 STYLE_GUIDE。
 - 請輸出修改後的程式碼與簡短說明。
@@ -397,13 +434,21 @@ Coder Output：
 
 請檢查：
 1. 是否滿足需求
-2. 是否使用不存在的 API
+2. 是否使用不存在的函式或模組
 3. 是否符合 STYLE_GUIDE
 4. 是否有重複程式碼或潛在 bug
 5. 是否需要修正
 
 請輸出 Pass / Fail 與具體修正建議。
 ```
+
+### 11.4 Agent 與檢索工具對應
+
+| Agent | 可用工具 | 主要用途 |
+|---|---|---|
+| Planner | `keyword_search`、`semantic_search` | 判斷需求需要哪些文件、函式規格或舊程式碼 |
+| Coder | `semantic_search`、`chunk_read` | 依據檢索到的規格與既有程式碼實作功能 |
+| Reviewer | `keyword_search`、`chunk_read` | 檢查函式與模組是否存在、是否符合 style 與需求 |
 
 ---
 
@@ -415,33 +460,51 @@ Coder Output：
 |---|---|---|
 | Pass@1 | 第一次產生的程式是否通過 unit tests | 通過 = 1，失敗 = 0 |
 | Final Pass | 允許修正 2 輪後是否通過 unit tests | 通過 = 1，失敗 = 0 |
-| API Correctness | 是否正確使用專案中存在的 API | 正確 = 1，錯誤 = 0 |
-| Hallucinated API | 是否捏造不存在的函式、參數或模組 | 有捏造 = 1，無捏造 = 0 |
+| Interface Correctness | 是否正確使用專案中存在的函式、模組與呼叫規格 | 正確 = 1，錯誤 = 0 |
+| 幻覺率（Hallucination Rate） | 是否捏造不存在的函式、參數、模組或錯誤理解專案規範 | 有幻覺 = 1，無幻覺 = 0 |
 | Code Quality | 命名、結構、重複程式碼、錯誤處理 | 人工評 1–5 |
 | Latency | 每題執行時間 | 秒數 |
 
-第二版可再加入：
+若要升級成正式實驗報告，建議再加入以下擴充指標：
 
-- Requirement Coverage
-- Maintainability
-- Iteration Count
-- Tool Calls
-- Token Cost
+| 指標 | 定義 | 計算方式 |
+|---|---|---|
+| Requirement Coverage | 是否滿足任務所有需求條件 | 人工評 0–2 或 0–1 |
+| Maintainability | 重構後是否更容易閱讀與維護 | 人工評 1–5 或 maintainability index |
+| Iteration Count | 修正幾輪才成功 | 記錄輪數，越少越好 |
+| Tool Calls | A-RAG 工具呼叫次數 | `keyword_search` / `semantic_search` / `chunk_read` 次數 |
+| Token Cost | 每題 token 成本 | input / output token 數與總成本 |
 
 ---
 
 ## 14. 結果表格式
 
-建議建立 `results/results.csv`：
+建議建立 `results/results.csv` 保存原始逐題結果；但若要直接在規劃文件中呈現目前已有結果，則可使用下列彙總表。
 
-| task_id | method | pass1 | final_pass | api_correct | hallucinated_api | quality_score | latency | tool_calls | notes |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---|
-| T01 | Single LLM |  |  |  |  |  |  |  |  |
-| T01 | Multi-Agent |  |  |  |  |  |  |  |  |
-| T01 | Multi-Agent + A-RAG |  |  |  |  |  |  |  |  |
-| T02 | Single LLM |  |  |  |  |  |  |  |  |
-| T02 | Multi-Agent |  |  |  |  |  |  |  |  |
-| T02 | Multi-Agent + A-RAG |  |  |  |  |  |  |  |  |
+| task_id | method | pass1 | final_pass | req_score | interface_correct | hallucination | quality_score | maintainability | iteration_count | tool_calls | latency | token_cost | notes |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| T01 | Single LLM | 0/1 | 0/1 | ... | ... | ... | ... | ... | ... | ... | ... | ... | ... |
+| T01 | Multi-Agent | 0/1 | 0/1 | ... | ... | ... | ... | ... | ... | ... | ... | ... | ... |
+| T01 | Multi-Agent + A-RAG | 1/1 | 1/1 | ... | ... | ... | ... | ... | ... | ... | ... | ... | ... |
+
+### 14.1 目前可直接引用的策略彙總結果（完整 45 筆口徑）
+
+| 方法 | 紀錄數 | Public 通過數 | Hidden 通過數 | Public 通過率 | Hidden 通過率 |
+|---|---:|---:|---:|---:|---:|
+| Single LLM（A） | 30 | 23 | 22 | 76.7% | 73.3% |
+| Multi-Agent（C） | 30 | 21 | 21 | 70.0% | 70.0% |
+| Multi-Agent + A-RAG（E） | 30 | 27 | 26 | 90.0% | 86.7% |
+
+### 14.2 完整 45 筆子集覆蓋情況
+
+| 維度 | A | C | E | 總計 |
+|---|---:|---:|---:|---:|
+| 紀錄數 | 30 | 30 | 30 | 90 |
+| T01 | 6 | 6 | 6 | 18 |
+| T02 | 6 | 6 | 6 | 18 |
+| T03 | 6 | 6 | 6 | 18 |
+| T04 | 6 | 6 | 6 | 18 |
+| T05 | 6 | 6 | 6 | 18 |
 
 ---
 
@@ -449,9 +512,9 @@ Coder Output：
 
 | 方法 | 預期優勢 | 可能限制 |
 |---|---|---|
-| Single LLM | 速度最快、系統最簡單 | 容易漏需求、捏造 API、不了解專案規範 |
-| Multi-Agent | Planner 可改善需求拆解，Reviewer 可提升可讀性 | 若沒有專案文件，仍可能用錯 API |
-| Multi-Agent + A-RAG | 可查 API、舊程式碼、style 與 tests，預期 API 正確率與需求符合度較高 | tool calls、延遲與 token cost 較高 |
+| Single LLM | 速度最快、系統最簡單 | 容易漏需求、捏造不存在的函式或模組、不了解專案規範 |
+| Multi-Agent | Planner 可改善需求拆解，Reviewer 可提升可讀性 | 若沒有專案文件，仍可能用錯既有函式或模組 |
+| Multi-Agent + A-RAG | 可查函式規格、舊程式碼、style 與 tests，預期介面使用正確率與需求符合度較高 | tool calls、延遲與 token cost 較高 |
 
 分析時不要只看哪個方法分數最高，也要說明成本取捨：
 
@@ -474,6 +537,16 @@ Coder Output：
 | 9 | 執行 pytest 與人工評分 | `results.csv` |
 | 10 | 整理成功 / 失敗案例 | `case_analysis.md` |
 
+### 16.1 下週二前最小可行版本
+
+若目標是先做出可展示的版本，建議壓縮到以下範圍：
+
+| 項目 | 建議最小範圍 |
+|---|---|
+| Codebase | 1 個小型學生資訊管理系統，3–4 個 Python 檔案 |
+| 任務數 | 5 題：2 題 code generation、2 題 bug fix、1 題 refactoring |
+| 比較組別 | Single LLM、Multi-Agent、Multi-Agent + A-RAG |
+| 核心指標 | Pass@1、Final Pass、Interface Correctness、幻覺率、Code Quality、Latency |
+| 報告重點 | 展示 A-RAG 如何幫助 Agent 查到正確函式規格與專案規範，避免憑空產生錯誤程式碼 |
+
 ---
-
-

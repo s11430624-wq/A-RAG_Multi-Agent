@@ -110,7 +110,7 @@ def test_empty_retrieval_result_counts_tool_but_not_success():
 
 def test_model_call_record_preserves_usage_audit_metadata():
     audit_meta = (
-        ("normalization_rule", "google_vertex_reasoning_accumulation"),
+        ("normalization_rule", "openai_reasoning_accumulation"),
         ("normalized_output_tokens", "94"),
         ("raw_completion_tokens", "1"),
         ("reasoning_tokens", "93"),

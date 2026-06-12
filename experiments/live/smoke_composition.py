@@ -23,8 +23,8 @@ from experiments.runner.config import (
 from experiments.runner.scheduler import PlannedRun
 
 
-APPROVED_PROVIDER_ID = "hermes_vertex_gateway"
-APPROVED_MODEL = "google/gemini-3.5-flash"
+APPROVED_PROVIDER_ID = "openai_compatible_gateway"
+APPROVED_MODEL = "GPT5.4"
 APPROVED_API_BASE = "http://127.0.0.1:8787/v1"
 
 

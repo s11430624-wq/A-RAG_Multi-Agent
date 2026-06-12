@@ -431,8 +431,8 @@ def test_final_429_aborts_without_completed_record(tmp_path):
 
     configs_dir = approved_root / "configs"
     configs_dir.mkdir(parents=True, exist_ok=True)
-    (configs_dir / "experiment.yaml").write_text("model: google/gemini-3.5-flash\nmodel_provider_id: hermes_vertex_gateway\nseed: 42\nrepetitions: 3\nmax_repair_rounds: 1\nstrategies:\n  - A\n  - C\n  - E\ntimeout:\n  agent_response: 30.0\n  unit_test: 5.0\n  total_run: 600.0\npaths:\n  tasks_definition: experiments/tasks.json\n  raw_results_dir: results/raw\n  derived_results_dir: results/derived\n  reviews_dir: reviews\n  workspace_base_dir: workspace\n")
-    (configs_dir / "models.yaml").write_text("default_provider: hermes_vertex_gateway\ndefault_model: google/gemini-3.5-flash\nproviders:\n  hermes_vertex_gateway:\n    provider_id: hermes_vertex_gateway\n    api_base: http://localhost:8787\n    models:\n      - id: google/gemini-3.5-flash\n        temperature: 0.0\n        top_p: 0.95\n        max_output_tokens: 1024\ngoogle/gemini-3.5-flash:\n  provider_id: hermes_vertex_gateway\n  temperature: 0.0\n  capabilities:\n    completion: true\n")
+    (configs_dir / "experiment.yaml").write_text("model: GPT5.4\nmodel_provider_id: openai_compatible_gateway\nseed: 42\nrepetitions: 3\nmax_repair_rounds: 1\nstrategies:\n  - A\n  - C\n  - E\ntimeout:\n  agent_response: 30.0\n  unit_test: 5.0\n  total_run: 600.0\npaths:\n  tasks_definition: experiments/tasks.json\n  raw_results_dir: results/raw\n  derived_results_dir: results/derived\n  reviews_dir: reviews\n  workspace_base_dir: workspace\n")
+    (configs_dir / "models.yaml").write_text("default_provider: openai_compatible_gateway\ndefault_model: GPT5.4\nproviders:\n  openai_compatible_gateway:\n    provider_id: openai_compatible_gateway\n    api_base: http://localhost:8787\n    models:\n      - id: GPT5.4\n        temperature: 0.0\n        top_p: 0.95\n        max_output_tokens: 1024\nGPT5.4:\n  provider_id: openai_compatible_gateway\n  temperature: 0.0\n  capabilities:\n    completion: true\n")
     
     contracts_dir = approved_root / "contracts"
     contracts_dir.mkdir(parents=True, exist_ok=True)

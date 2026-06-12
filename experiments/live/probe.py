@@ -5,7 +5,7 @@ from pathlib import Path
 from experiments.providers.models import ModelRequest, ModelParameters, TransportRequest, ModelResponse
 
 APPROVED_ALIAS_MAP = {
-    "google/gemini-3.5-flash": "google/gemini-3.5-flash",
+    "GPT5.4": "GPT5.4",
 }
 
 
@@ -101,7 +101,7 @@ def run_live_probe_cli(repo_root: Path) -> int:
         print("  ARAG_ALLOW_SINGLE_PROBE=1")
         return 2
 
-    print("=== M7-C Local Vertex Proxy Live Probe ===")
+    print("=== M7-C Local OpenAI-Compatible Proxy Live Probe ===")
     print("Step 1: Readiness check...")
     
     # 1. Check configs/models.yaml
@@ -115,24 +115,24 @@ def run_live_probe_cli(repo_root: Path) -> int:
         models_data = yaml.safe_load(f)
         
     default_model = models_data.get("default_model")
-    if default_model != "google/gemini-3.5-flash":
-        print(f"Error: default_model must be 'google/gemini-3.5-flash', got '{default_model}'")
+    if default_model != "GPT5.4":
+        print(f"Error: default_model must be 'GPT5.4', got '{default_model}'")
         return 2
         
     providers = models_data.get("providers", {})
-    if "hermes_vertex_gateway" not in providers:
-        print("Error: hermes_vertex_gateway provider not found in models.yaml")
+    if "openai_compatible_gateway" not in providers:
+        print("Error: openai_compatible_gateway provider not found in models.yaml")
         return 2
         
-    gateway_info = providers["hermes_vertex_gateway"]
+    gateway_info = providers["openai_compatible_gateway"]
     api_base = gateway_info.get("api_base")
     if api_base != "http://127.0.0.1:8787/v1":
         print(f"Error: api_base must be 'http://127.0.0.1:8787/v1', got '{api_base}'")
         return 2
         
     supported_models = [m.get("id") for m in gateway_info.get("models", []) if m.get("id")]
-    if "google/gemini-3.5-flash" not in supported_models:
-        print("Error: google/gemini-3.5-flash not listed under supported models")
+    if "GPT5.4" not in supported_models:
+        print("Error: GPT5.4 not listed under supported models")
         return 2
         
     print("  [OK] models.yaml configuration is correct.")
@@ -145,11 +145,11 @@ def run_live_probe_cli(repo_root: Path) -> int:
         s.connect(("127.0.0.1", 8787))
         s.close()
     except Exception as exc:
-        print("Error: Local Vertex Proxy is not listening on 127.0.0.1:8787.")
-        print("Please start the Local Vertex Proxy using start-vertex-proxy.ps1.")
+        print("Error: Local OpenAI-Compatible Proxy is not listening on 127.0.0.1:8787.")
+        print("Please start the Local OpenAI-Compatible Proxy using start-openai-proxy.ps1.")
         return 2
         
-    print("  [OK] Local Vertex Proxy is listening on 127.0.0.1:8787.")
+    print("  [OK] Local OpenAI-Compatible Proxy is listening on 127.0.0.1:8787.")
     
     # 3. Transport and Provider build
     from experiments.live.factory import LiveProviderFactory
@@ -165,7 +165,7 @@ def run_live_probe_cli(repo_root: Path) -> int:
     
     provider = LiveProviderFactory.create_provider(
         config=config,
-        model_id="google/gemini-3.5-flash",
+        model_id="GPT5.4",
         env=os.environ,
     )
     
@@ -184,7 +184,7 @@ def run_live_probe_cli(repo_root: Path) -> int:
     try:
         # Create a ModelRequest
         params = ModelParameters(
-            model="google/gemini-3.5-flash",
+            model="GPT5.4",
             temperature=0.0,
             max_output_tokens=100,
             top_p=0.95,
@@ -204,7 +204,7 @@ def run_live_probe_cli(repo_root: Path) -> int:
         response = provider.generate(request)
         
         # Execute GatewayProbe validation contract on the same response object, avoiding redundant network request
-        probe.validate_response(response, "google/gemini-3.5-flash")
+        probe.validate_response(response, "GPT5.4")
         
     except Exception as exc:
         print(f"\n=== CRITICAL CAPABILITY MISMATCH BLOCKERS DETECTED ===")

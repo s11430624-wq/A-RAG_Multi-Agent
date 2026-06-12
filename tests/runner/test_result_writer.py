@@ -126,7 +126,7 @@ def test_partial_result_write_rolls_back_to_original_bytes(tmp_path, valid_resul
     raw_root = tmp_path / "results" / "raw"
     path = raw_root / "exp.jsonl"
     raw_root.mkdir(parents=True)
-    original = json.dumps({**valid_result_record, "run_id": "exp-20260611-google-gemini-3-5-flash-seed42-r3__T02__A__rep01__seed42"}, sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n"
+    original = json.dumps({**valid_result_record, "run_id": "exp-20260611-GPT5.4-seed42-r3__T02__A__rep01__seed42"}, sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n"
     path.write_bytes(original)
     writer = ResultJsonlWriter(approved_raw_root=raw_root, jsonl_path=path, schema_path=result_schema_path)
 

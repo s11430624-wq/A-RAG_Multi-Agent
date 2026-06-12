@@ -24,12 +24,12 @@ def test_factory_constructs_a_c_e_with_same_provider_parameters(project_root, ex
     assert isinstance(bundles[0].session, SingleLLMStrategySession)
     assert isinstance(bundles[1].session, MultiAgentStrategySession)
     assert isinstance(bundles[2].session, ARAGMultiAgentStrategySession)
-    assert {bundle.model for bundle in bundles} == {"google/gemini-3.5-flash"}
+    assert {bundle.model for bundle in bundles} == {"GPT5.4"}
     assert {bundle.seed for bundle in bundles} == {42}
     assert len({id(bundle.provider) for bundle in bundles}) == 3
     assert {
         bundle.session.artifact_writer.provider_id for bundle in bundles
-    } == {"hermes_vertex_gateway"}
+    } == {"openai_compatible_gateway"}
 
 
 def test_provider_response_cursor_is_isolated_per_run(project_root, experiment_config, planned_runs, tmp_path):

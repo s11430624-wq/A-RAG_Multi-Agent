@@ -26,10 +26,10 @@ def test_existing_configs_load_exact_provider_parameters(
     config = load_provider_config(models_config_path, experiment_config_path)
 
     assert config == ProviderConfig(
-        provider_id="hermes_vertex_gateway",
+        provider_id="openai_compatible_gateway",
         api_base="http://127.0.0.1:8787/v1",
         parameters=ModelParameters(
-            model="google/gemini-3.5-flash",
+            model="GPT5.4",
             temperature=0.0,
             top_p=0.95,
             max_output_tokens=12288,

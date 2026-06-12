@@ -444,7 +444,7 @@ class SmokeGateAuditor:
                 seed = rec_seed
             elif rec_seed != seed:
                 raise ValueError("Seed mismatch between runs")
-            if rec_model != "google/gemini-3.5-flash":
+            if rec_model != "GPT5.4":
                 raise ValueError(f"Unexpected smoke model: {rec_model}")
             if rec_seed != 42:
                 raise ValueError(f"Unexpected smoke seed: {rec_seed}")
@@ -1005,10 +1005,10 @@ class FullRunApprovalValidator:
             raise ValueError(f"Failed to load experiment config: {exc}")
 
         # Provider/model/seed policy must match
-        if config.model != "google/gemini-3.5-flash":
-            raise ValueError(f"Expected model google/gemini-3.5-flash, got {config.model}")
-        if config.model_provider_id != "hermes_vertex_gateway":
-            raise ValueError(f"Expected provider hermes_vertex_gateway, got {config.model_provider_id}")
+        if config.model != "GPT5.4":
+            raise ValueError(f"Expected model GPT5.4, got {config.model}")
+        if config.model_provider_id != "openai_compatible_gateway":
+            raise ValueError(f"Expected provider openai_compatible_gateway, got {config.model_provider_id}")
         if config.seed != 42:
             raise ValueError(f"Expected seed 42, got {config.seed}")
         if config.repetitions != 3:

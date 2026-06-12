@@ -86,8 +86,8 @@ class LiveProviderFactory:
                         if other_api_base and provider_runtime_config.api_base == other_api_base:
                             raise ValueError(f"Runtime endpoint override mixes provider endpoint: {provider_runtime_config.api_base} belongs to {other_prov_id}")
                 
-                # Check for invalid overrides on hermes_vertex_gateway
-                if config.model_provider_id == "hermes_vertex_gateway":
+                # Check for invalid overrides on openai_compatible_gateway
+                if config.model_provider_id == "openai_compatible_gateway":
                     url_lower = provider_runtime_config.api_base.lower()
                     # Reject localhost, 8788, trycloudflare (or cloudflare), and any other invalid endpoints
                     if "localhost" in url_lower or "8788" in url_lower or "cloudflare" in url_lower or url_lower != "http://127.0.0.1:8787/v1":

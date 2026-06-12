@@ -58,7 +58,7 @@ def test_frozen_smoke_artifacts():
         assert rec["task_id"] == "T01"
         assert rec["repetition"] == 1
         assert rec["seed"] == 42
-        assert rec["model"] == "google/gemini-3.5-flash"
+        assert rec["model"] == "GPT5.4"
         assert rec["valid_run"] is True
         assert rec["infra_error"] is False
         
@@ -87,8 +87,8 @@ def test_frozen_smoke_artifacts():
             m_data = json.loads(m_bytes.decode("utf-8"))
             
             # Assert correct provider_id, model, seed
-            assert m_data["provider_id"] == "hermes_vertex_gateway"
-            assert m_data["model"] == "google/gemini-3.5-flash"
+            assert m_data["provider_id"] == "openai_compatible_gateway"
+            assert m_data["model"] == "GPT5.4"
             assert m_data["seed"] == 42
             assert m_data["usage_complete"] is True
             
