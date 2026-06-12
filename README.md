@@ -126,8 +126,8 @@ graph TD
 | 基礎設施錯誤數 (Infrastructure Errors) | 0 |
 | 累積 Public 測試通過記錄數 | 102 |
 | 累積 Hidden 測試通過記錄數 | 123 |
-| 累積 Input Tokens 消耗總量 | 1,357,238 |
-| 累積 Output Tokens 消耗總量 | 1,492,452 |
+| 累積 Input Tokens 消耗總量 | 3,657,238 |
+| 累積 Output Tokens 消耗總量 | 4,029,442 |
 
 ### 6.3 失敗與停止型態分析 (Failure Modes)
 
